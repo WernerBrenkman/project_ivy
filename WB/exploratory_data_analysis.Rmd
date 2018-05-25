@@ -8,6 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 require(knitr)
 require(cluster) 
 require(factoextra)
+require(GGally)
 source('src/ini.R')
 source('src/load.R')
 source('src/transform.R')
@@ -53,7 +54,6 @@ Let's visualise missing
 ```{r impute_viz, echo=FALSE, warning=FALSE, message=FALSE}
 require(VIM)
 df %>%
-  select(-GarageYrBlt, -SalePrice, -Id, -set_id) %>%
   aggr(.)
 
 ```
@@ -66,45 +66,60 @@ print_na_cols()
 
 ## Visualisation
 
-Notice **SalePrice** vs **SalePriceLog**. We'll be using **SalePriceLog** from now on.
+Notice **SalePrice** vs **SalePriceLog**. We'll be using **SalePriceLog** from now on, because it is closer to a normal distribution.
 
 ```{r viz, echo=FALSE, fig.width=10, fig.asp=.5}
+df = df %>%
+  mutate(SalePriceLog = ifelse(set_id == '1', log10(SalePrice), NA))
 
-p = ggplot(train) + theme_bw()
+p = ggplot(filter(df, set_id == '1')) + theme_bw()
 multiplot(p + geom_histogram(aes(x = SalePrice)),
           p + geom_histogram(aes(x = SalePriceLog)),
           p + stat_qq(aes(sample=SalePrice)),
           p + stat_qq(aes(sample=SalePriceLog)),
           cols = 2)
-
 ```
 
 ### Numeric variables
 Let's get an overview of the numeric variables
 ```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
-draw_corplot = function(var, scale_x_log10 = FALSE){
+draw_corplot = function(var, scale_x_log10 = FALSE, alpha = .3){
   if(scale_x_log10){  
-    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = .3) + ggtitle(var) + scale_x_log10()
+    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = alpha) + ggtitle(var) + scale_x_log10()
   }else{  
-    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = .3) + ggtitle(var)
+    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = alpha) + ggtitle(var)
   }
 }
-plotlist = lapply(train, function(x){ifelse(class(x) %in% c('integer', 'numeric'), 1, NA)}) %>% unlist()
-plotlist = names(plotlist)[which(plotlist == 1)]
-plotlist = plotlist[plotlist != 'Id']
-plotlist = lapply(plotlist, function(x){draw_corplot(x)})
+plotlist = lapply(filter(df, set_id == '1'), function(x){ifelse(class(x) %in% c('integer', 'numeric'), 1, NA)}) %>% unlist()
+var_names = names(plotlist)[which(plotlist == 1)]
+var_names = var_names[var_names != 'Id']
+plotlist = lapply(var_names, function(x){draw_corplot(x)})
 multiplot(cols = 5, plotlist = plotlist)
 ```
+
+```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
+ggcorr(filter(df, set_id == '1')[, var_names], nbreaks = 4, palette = "RdGy", label = TRUE, label_size = 3, label_color = "white")
+```
+
+
 Note the following:
 Some variables contain outliers. If you are going to do clustering this is imporant to note, because some algorithms are sensitive to outliers.
 Some variables display a double correlation pattern. This is only visible when you set the points in the plot to be transparent. (Example: TotalBsmtSF, x_1stFlrSF)
 
+Changing **LotArea** to  **log10(LotArea)** sligthly improves the correlation with **SalePriceLog**
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+cor_dat = filter(df, set_id == '1') %>%
+  dplyr::select(LotArea, SalePriceLog) %>%
+  mutate(LotAreaLog = log10(LotArea))
+cor(cor_dat)
+```
 When reading **data_descr.txt** it is clear that some variables are highly correlated purely by definition. Let's explore those in detail and decide which to keep.
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 cor_def_vars = c('YearBuilt', 'GarageYrBlt', 'GarageCars', 'GarageArea', 'YearRemodAdd')
 
-cor(train[, cor_def_vars], use = "complete.obs")
+cor(df[df$set_id == '1', cor_def_vars], use = "complete.obs")
 
 multiplot(cols = 2, plotlist = list(
   p + geom_point(aes_string(x = 'YearBuilt', y = 'GarageYrBlt')),
@@ -113,6 +128,17 @@ multiplot(cols = 2, plotlist = list(
 
 ```
 From the above we can see that there is a very high correlation between **YearBuilt** & **GarageYrBlt** as well as **GarageCars** & **GarageArea**. Another point to note is that each of **GarageYrBlt**, **GarageCars** & **GarageArea** indicates the lack of a garage on the property. From here on we will only use**YearBuilt** and **GarageArea** as these variables contains info regarding the age of the property (and garage), if there is in fact a garage and its size.
+
+```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
+source('src/feature_eng.R')
+source('src/pca.R')
+
+var_names = lapply(filter(df, set_id == '1'), function(x){ifelse(class(x) %in% c('integer', 'numeric'), 1, NA)}) %>% unlist()
+var_names = names(var_names)[which(var_names == 1)]
+var_names = var_names[var_names != 'Id']
+ggcorr(filter(df, set_id == '1')[, var_names], nbreaks = 4, palette = "RdGy", label = TRUE, label_size = 3, label_color = "white")
+
+```
 
 #### Clustering
 It would make sense that bigger houses are more expensive. Let's cluster all area related variables and assess the impact of area on **SalePrice**. Because we know that there are multiple outliers in the data we will use the k-medoids algorithm rather than k-means. We'll also explore hierarchical clustering.

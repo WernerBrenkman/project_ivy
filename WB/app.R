@@ -20,13 +20,13 @@ source('src/impute.R')
 
 # remove_vars
 # =========================================
-source('src/remove_vars.R')
+source('src/feature_eng.R')
 
-
-# clustering
-# =========================================
-source('src/clustering.R')
 
 # pca
 # =========================================
 source('src/pca.R')
+
+# clustering
+# =========================================
+source('src/clustering.R')
