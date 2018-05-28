@@ -9,6 +9,7 @@ require(knitr)
 source('src/ini.R')
 source('src/load.R')
 source('src/transform.R')
+colSums(is.na(df))
 ```
 
 ## Overview
@@ -59,6 +60,7 @@ df %>%
 ```{r imputed, echo=FALSE, warning=FALSE}
 source('src/impute.R')
 # print_na_cols()
+colSums(is.na(df))
 ```
 
 ## Visualisation
@@ -196,14 +198,15 @@ To note, features were encoded with 0 = none/ the worst in ascending order until
 ```{r}
 # Categorical varibles to consider for Correlation
 library(corrplot)
+colSums(is.na(df))
 
 # Need to include SalePriceLog
 train_cat = train[, c(spec_ord_fact, qual_fact, 'SalePriceLog')]
 dim(train_cat)
 
-# Not all are converted correctly
 # Need to change to numeric (train_cat)
 cor_cat = cor(train_cat, use="pairwise.complete.obs", method = 'pearson')
+# corrplot(cor_cat, method = 'circle')
 corrplot(cor_cat, method = 'circle', order="hclust")
 ```
 From the above correlations, we can see a couple of clusters that have formed from the soring method (hclust).
@@ -211,33 +214,33 @@ ExterQual seems to be highly correlated to BsmtQual, KitchenQual, HeatingQC & Ga
 We can also see that there's a relationship between the GarageCond and GarageQual & PavedDrive. 
 
 Additionally, we can see that the features that contribute to SalePrice significantly are:
-ExterQual, BsmtQual, KitchenQual, HeatingQC, FireplaceQu, GarageFinish, CentralAir.
+ExterQual, KitchenQual, GarageFinish, BsmtQual, FireplaceQu, HeatingQC. 
+Additional factors to consider are:
+BsmtExposure, BsmtFinType1, CentralAir, PavedDrive, BsmtCOnd, GarageQual, GarageCond
 
-To check the negative relationship to SalePriceLog?
+Let's visualize these relationships:
 ```{r}
 C1 = ggplot(train, aes(x = train$ExterQual, y = train$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE)
-C2 = ggplot(train, aes(x = train$BsmtQual, y = train$SalePriceLog)) + geom_point() + 
+C2 = ggplot(train, aes(x = train$KitchenQual, y = train$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE)
-C3 = ggplot(train, aes(x = train$KitchenQual, y = train$SalePriceLog)) + geom_point() + 
+C3 = ggplot(train, aes(x = train$GarageFinish, y = train$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE)
-C4 = ggplot(train, aes(x = train$HeatingQC, y = train$SalePriceLog)) + geom_point() + 
+C4 = ggplot(train, aes(x = train$BsmtQual, y = train$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE)
 C5 = ggplot(train, aes(x = train$FireplaceQu, y = train$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE)
-C6 = ggplot(train, aes(x = train$GarageFinish, y = train$SalePriceLog)) + geom_point() + 
+C6 = ggplot(train, aes(x = train$HeatingQC., y = train$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE)
-C7 = ggplot(train, aes(x = train$CentralAir, y = train$SalePriceLog)) + geom_point() + 
-      geom_smooth(method=lm , color="red", se=FALSE)
-
+C3
 library(gridExtra)
-grid.arrange(C1, C2, C3, C4, C5, C6, C7)
+grid.arrange(C1, C2, C3, C4, C5, C6)
 ```
-Interesting to see that in the above instances, where there are negative relationships, that in most instances where the Quality feature = 1 (indicative of 'Poor' quality) the log of the SalesPrice is higher. 
-**(Trying to figure this one out?)**
+From the above graphs, we can see a very clear and strong postive linear relationship between the feature and SalesPrice. 
 
 ## Considering non-ordinal categorical features
-From the list of of non-ordinal features, there are a coupel that stand out and are worth exploring.
+From the list of of non-ordinal features, there are a couple that stand out and are worth exploring.
+(It's more art than science).
 
 # Neighborhood
 One of the features I'm particularly interested in is the Neighborhood. From intuition, I know that neighborhood plays a pretty important role when someone is considering buying a house. More favourable Neighborhoods are likely to have higher SalePrices. Conversely, more popular neighborhoods could also mean cheaper SalesPrices. 
@@ -350,8 +353,8 @@ library(randomForest)
 # imp_DF = data.frame(Variables = row.names(imp_RF), MSE = imp_RF[,1])
 # imp_DF = imp_DF[order(imp_DF$MSE, decreasing = TRUE),]
 
-sapply(train, function(x) sum(is.na(x)))
-train = subset(train, select = -GarageYrBlt)
+# sapply(train, function(x) sum(is.na(x)))
+# train = subset(train, select = -GarageYrBlt)
 
 train=train %>% mutate_if(is.character, as.factor)
 
@@ -363,16 +366,6 @@ fit = randomForest(SalePriceLog ~ . -SalePrice,
 
 varImpPlot(fit, n.var = min(20, nrow(fit$importance)))
 
-```
-
-
-```{r}
-# Split again 
-train = df %>%
-  filter(set_id == '1')
-test = df %>%
-  filter(set_id == '2')
-train$SalePriceLog = log10(train$SalePrice)
 ```
 
 To explore these factors, we will looks at the GoodmanKruskal tau values, which describe both the forward & backward association between 2 categorical variables. 
@@ -507,87 +500,4 @@ plot(GK_matrix, diagSize = 5)
 
 ```
 
-```{r}
-GKtau(train$GarageType, train$GarageFinish)
-table(train$GarageType, train$GarageFinish)
-
-GKtau(train$ExterCond, as.factor(train$SalePriceLog))
-```
-
-```{r}
-(GKtau(train$Neighborhood, train$MSSubClass))
-(GKtau(train$Neighborhood, train$HouseStyle))
-(GKtau(train$Neighborhood, train$MSZoning))
-
-print(GKtau(train$MSSubClass, train$HouseStyle))
-
-```
-
-
-
-## Split Data
-```{r}
-# split into test and train again (after in code feature engineering)
-# =========================================
-train = df %>%
-  filter(set_id == '1')
-test = df %>%
-  filter(set_id == '2')
-# train$SalePriceLog = log10(train$SalePrice)
-```
-
-
-```{r}
-#### Model 
-# ---------------------
-f = (SalePrice ~ OverallQual + OverallCond) 
-lr_model = lm(formula = f, 
-               data = train)
-
-test_pred = as.numeric(predict(lr_model, train, type='response') > 0.5)
-
-print(sprintf('Test accuracy: %f perc', mean(test_pred == train$SalePrice)))
-
-summary(lr_model)
-
-```
-
-
-## Vanilla LM Model
-Seperate model features considered in prediction:
-```{r}
-#model_var = c('SalePrice', 'SalePriceLog', 'TotalBsmtSF', 'NeighPrice', 'OverallQual', 'OverallCond', #'YearBuilt', 'GrLivArea', 'BsmtQual', 'KitchenQual', 'HeatingQC', 'FireplaceQu', 'GarageArea', 'CentralAir', #'MSSubClassPrice')
-
-model_var = c('SalePriceLog', 'TotalBsmtSF', 'NeighPrice', 'OverallQual', 'OverallCond', 'YearBuilt', 'GrLivArea', 'BsmtQual', 'KitchenQual', 'HeatingQC', 'FireplaceQu', 'GarageArea', 'CentralAir', 'MSSubClassPrice', 'LotArea', 'LotShape', 'BsmtFinSF1', 'X1stFlrSF')
-
-
-#model_lin = train[ , !(names(train) %in% fact_vars)]
-model_lin = train[ , model_var]
-
-f = SalePriceLog ~ .#-SalePrice 
-lr_model = lm(formula = f,
-              data = model_lin)
-
-summary(lr_model)
-
-RSS <- c(crossprod(lr_model$residuals))
-MSE <- RSS / length(lr_model$residuals)
-RMSE <- sqrt(MSE)
-
-library(caret)
-varImp(lr_model)
-```
-
-```{r}
-# install.packages("forecast") 
-# library(forecast)
-
-pred = predict(lr_model, test, type = 'response')
-# Remove response?
-
-output = cbind(test$Id, 10^pred)
-colnames(output) = c("Id", "SalePrice")
-write.csv(output, file = "submission.csv", row.names = FALSE)
-
-```
 

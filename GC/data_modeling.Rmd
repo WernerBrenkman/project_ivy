@@ -1,0 +1,159 @@
+---
+title: "data_modeling - Gabriella"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Data Modeling
+
+# Split Data
+In preparing to model our dataset, we will split the data again as to ensuer any new features we may have added are included correctly - just as a precautionary measure. 
+```{r}
+var_remove = c('set_id', 'SalePrice', 'SaleCondition', 'SaleType', 'MSSubClass')
+
+train$NeighPrice = df$NeighPrice[1:1460]
+test$NeighPrice = df$NeighPrice[1461:2919]
+train$MSSubClassPrice = df$MSSubClassPrice[1:1460]
+test$MSSubClassPrice = df$MSSubClassPrice[1461:2919]
+
+train[, var_remove] = NULL
+test[, var_remove] = NULL
+df[, var_remove] = NULL
+
+```
+
+## Vanilla Saturdated Model
+```{r}
+library(Metrics)
+
+#### Model 
+# ---------------------
+
+lr_saturated_model = lm(formula = SalePriceLog ~ ., 
+                        data = train)
+
+lr_sat_sum = summary(lr_saturated_model)
+sat_pred = predict(lr_saturated_model, test)
+
+sat_RMSE = sqrt(mean((train$SalePriceLog - lr_saturated_model$fitted.values)^2))
+
+```
+
+RMSE for Saturated Model (Training Error) = 0.0439
+
+## 'My intuition' Model
+Seperate model features considered in prediction:
+```{r}
+#model_var = c('SalePrice', 'SalePriceLog', 'TotalBsmtSF', 'NeighPrice', 'OverallQual', 'OverallCond', #'YearBuilt', 'GrLivArea', 'BsmtQual', 'KitchenQual', 'HeatingQC', 'FireplaceQu', 'GarageArea', 'CentralAir', #'MSSubClassPrice')
+
+model_var = c('SalePriceLog', 'TotalBsmtSF', 'NeighPrice', 'OverallQual', 'OverallCond', 'YearBuilt', 'GrLivArea', 'BsmtQual', 'KitchenQual', 'HeatingQC', 'FireplaceQu', 'GarageArea', 'CentralAir', 'LotArea', 'LotShape', 'BsmtFinSF1', 'X1stFlrSF')
+
+model_lin = train[ , model_var]
+
+f = SalePriceLog ~ .
+lr_int_model = lm(formula = f,
+              data = model_lin)
+
+lr_int_sum = summary(lr_int_model)
+
+library(caret)
+varImp(lr_int_model)
+
+lr_int_pred = predict(lr_int_model, test)
+int_mse = sqrt(mean((train$SalePriceLog - lr_int_model$fitted.values)^2))
+
+anova(lr_int_model, lr_saturated_model)
+```
+RMSE for intuition model (training error) = 0.062499
+Although the training error for the Intuition Model is higher, from the Anova F-Test it seems that variables beyond what has been identified in the reduced (intuition) model do not contribute significant information to the SalePrice of Houses. This is proved by the p-value which is < 0.05.
+
+From the variable importance plot, let's try and remove variables that do not contribute signifcantly to SalePrice (are of less importance). In our 2nd round, let's remove: TotalBsmtSF, LotShape.
+
+```{r}
+model_var2 = c('SalePriceLog', 'NeighPrice', 'OverallQual', 'OverallCond', 'YearBuilt', 'GrLivArea', 'BsmtQual', 'KitchenQual', 'HeatingQC', 'FireplaceQu', 'GarageArea', 'CentralAir', 'LotArea', 'BsmtFinSF1', 'X1stFlrSF')
+
+model_lin2 = train[ , model_var2]
+
+f = SalePriceLog ~ .
+lr_int2_model = lm(formula = f,
+              data = model_lin2)
+
+lr_int2_sum = summary(lr_int2_model)
+#varImp(lr_int2_model)
+
+lr_int2_pred = predict(lr_int2_model, test)
+int2_mse = sqrt(mean((train$SalePriceLog - lr_int2_model$fitted.values)^2))
+```
+RMSE for 2nd round of intuition model (training error) = 0.06251
+
+## Random Forest Model
+Let's model on the top 15 variables as identified by the Random Forest method. 
+```{r}
+model_for = c('SalePriceLog', 'GrLivArea', 'Neighborhood', 'OverallQual', 'X1stFlrSF', 'TotalBsmtSF', 'BsmtFinSF1', 'GarageArea', 'X2ndFlrSF', 'LotArea', 'OverallCond', 'BsmtFinType1', 'YearRemodAdd', 'ExterQual', 'FireplaceQu', 'GarageType')
+
+model_for = train[ , model_for]
+
+f = SalePriceLog ~ .
+lr_for_model = lm(formula = f,
+              data = model_for)
+
+lr_for_sum = summary(lr_for_model)
+#varImp(lr_for_model)
+
+lr_for_pred = predict(lr_for_model, test)
+for_mse = sqrt(mean((train$SalePriceLog - lr_for_model$fitted.values)^2))
+
+output_for = cbind(test$Id, 10^lr_for_pred)
+colnames(output_for) = c("Id", "SalePrice")
+write.csv(output_for, file = "forest_submission.csv", row.names = FALSE)
+
+```
+
+
+
+## Lasso Regression Model
+
+```{r}
+library(caret)
+
+tr.control = trainControl(method="repeatedcv", number = 10, repeats = 10)
+lambdas = seq(1,0,-.001)
+tune_grid = expand.grid(alpha=1,lambda=c(1,0.1,0.05,0.01,seq(0.009,0.001,-0.001), 0.00075,0.0005,0.0001))
+
+# train function with class formula
+lasso_model = train(SalePriceLog ~ . , 
+                    data = train,
+                    method = "glmnet",
+                    metric = "RMSE",
+                    maximize = FALSE,
+                    trControl = tr.control
+                    # tuneGrid = tune_grid
+                    )
+
+lasso_pred = 10^(predict(lasso_model, newdata = test))-1
+
+write.csv(data.frame(Id=test$Id,SalePrice=lassopreds),"lasso_submission.csv",row.names = FALSE)
+
+```
+
+
+
+```{r}
+# install.packages("forecast") 
+# library(forecast)
+
+pred = predict(lr2_model, test, type = 'response')
+# Remove response?
+
+output = cbind(test$Id, 10^pred)
+colnames(output) = c("Id", "SalePrice")
+write.csv(output, file = "submission.csv", row.names = FALSE)
+
+```
+
+
+
+
