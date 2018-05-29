@@ -1,0 +1,185 @@
+---
+title: "House Prices_Gabriella"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(knitr)
+source('src/ini.R')
+source('src/load.R')
+source('src/transform.R')
+source('src/impute.R')
+
+```
+
+## EDA - Categorical Variables
+
+```{r}
+source('src/feature_eng.R')
+
+p = ggplot(train) + theme_bw()
+
+SP_mean = mean(train$SalePriceLog)
+
+draw_boxplot = function(var){
+  p + geom_boxplot(aes_string(x = var, y = 'SalePriceLog')) + ggtitle(var) +
+    geom_hline(yintercept=SP_mean, linetype="dashed", color = "red") 
+}
+plotlist = lapply(train, function(x){ifelse(class(x) %in% c('factor'), 1, NA)}) %>% unlist()
+plotlist = names(plotlist)[which(plotlist == 1)]
+plotlist = lapply(plotlist, function(x){draw_boxplot(x)})
+multiplot(cols = 5, plotlist = plotlist)
+
+
+```
+
+In order to observe a correlation between the categorical features and SalesPrice(Log), we will consider the Kendall correlation. This method correlates as.numeric(factor) and shows relationships between features.
+? Was dummy varibles used?
+
+```{r}
+# Chnaging Factor variables to Numeric (in order to develop cor matrix)
+MSSubClass = as.numeric(train$MSSubClass)
+MSZoning = as.numeric(train$MSZoning)
+Street = as.numeric(train$Street)
+Alley = as.numeric(train$Alley)
+LotShape = as.numeric(train$LotShape)
+LandContour = as.numeric(train$LandContour)
+Utilities = as.numeric(train$Utilities)
+LotConfig = as.numeric(train$LotConfig)
+LandSlope = as.numeric(train$LandSlope)
+Neighborhood = as.numeric(train$Neighborhood)
+Condition1 = as.numeric(train$Condition1)
+Condition2 = as.numeric(train$Condition2)
+BldgType = as.numeric(train$BldgType)
+HouseStyle = as.numeric(train$HouseStyle)
+RoofStyle = as.numeric(train$RoofStyle)
+RoofMatl = as.numeric(train$RoofMatl)
+Exterior1st = as.numeric(train$Exterior1st)
+Exterior2nd = as.numeric(train$Exterior2nd)
+MasVnrType = as.numeric(train$MasVnrType)
+ExterQual = as.numeric(train$ExterQual)
+ExterCond = as.numeric(train$ExterCond)
+BsmtQual = as.numeric(train$BsmtQual)
+BsmtCond = as.numeric(train$BsmtCond)
+BsmtExposure = as.numeric(train$BsmtExposure)
+BsmtFinType1 = as.numeric(train$BsmtFinType1)
+BsmtFinType2 = as.numeric(train$BsmtFinType2)
+Heating = as.numeric(train$Heating)
+HeatingQC = as.numeric(train$HeatingQC)
+CentralAir = as.numeric(train$CentralAir)
+Electrical = as.numeric(train$Electrical)
+KitchenQual = as.numeric(train$KitchenQual)
+FireplaceQu = as.numeric(train$FireplaceQu)
+GarageType = as.numeric(train$GarageType)
+GarageFinish = as.numeric(train$GarageFinish)
+GarageQual = as.numeric(train$GarageQual)
+GarageCond = as.numeric(train$GarageCond)
+PavedDrive = as.numeric(train$PavedDrive)
+PoolQC = as.numeric(train$PoolQC)
+Fence = as.numeric(train$Fence)
+MiscFeature = as.numeric(train$MiscFeature)
+SaleType = as.numeric(train$SaleType)
+SaleCondition = as.numeric(train$SaleCondition)
+Functional = as.numeric(train$Functional)
+Foundation = as.numeric(train$Foundation)
+```
+
+# Property Variables
+```{r}
+m = cbind(SalesLog = train$SalePriceLog, Street, Alley, LotShape, LandContour, LandSlope, LotConfig)
+cor(m, method="kendall", use="pairwise") 
+
+```
+No variables have a significant relationship to SalesPriceLog. It might be worth considering LotShape.
+It seems that only LandContour & LandSlope have a strong negative correlation. 
+
+# Dwelling/ Living Variables
+```{r}
+m1 = cbind(SalesLog = train$SalePriceLog, BldgType, HouseStyle, MSSubClass)
+cor(m1, method="kendall", use="pairwise") 
+
+```
+No variables have a significant relationship to SalesPriceLog.
+It seems that only BldgType & MSSubClass have a strong positive correlation. 
+
+# Utility Variables
+```{r}
+m2 = cbind(SalesLog = train$SalePriceLog, Utilities, Electrical)
+cor(m2, method="kendall", use="pairwise") 
+
+```
+Electrical seems to correlate to SalesLog but not significantly. 
+
+# Overall Quality & Condition Variables
+```{r}
+m3 = cbind(SalesLog = train$SalePriceLog, OverallQual= train$OverallQual, OverallCond = train$OverallCond, Functional)
+cor(m3, method="kendall", use="pairwise") 
+
+```
+OverallQual has shown the strongest positive correlation to SalesPriceLog. 
+Interestingly, I would have thought OverallQual & OverallCond were strongly related, but aren't. 
+
+# Material of House Variables
+```{r}
+m4 = cbind(SalesLog = train$SalePriceLog, OverallQual = train$OverallQual, RoofMatl, Exterior1st, Exterior2nd, MasVnrType, ExterQual, ExterCond, Foundation)
+cor(m4, method="kendall", use="pairwise") 
+
+```
+ExterQual seems to have a negative correlation to SalesPriceLog. 
+ExterQual & OverallQual have a strong correlaton/ relationship. It might be worth considering only one of these factors. 
+Additionally, Exterior1st strongly related to Exterior2nd.
+
+# Roof Variables
+```{r}
+m5 = cbind(SalesLog = train$SalePriceLog, RoofStyle, RoofMatl)
+cor(m5, method="kendall", use="pairwise") 
+
+```
+
+# Basement Variables
+```{r}
+m6 = cbind(SalesLog = train$SalePriceLog, BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2)
+cor(m6, method="kendall", use="pairwise") 
+
+```
+BsmtQual seems to have a relationship to SalesPriceLog. 
+
+# Heating Variables
+```{r}
+m7 = cbind(SalesLog = train$SalePriceLog, Heating, HeatingQC, CentralAir, FireplaceQu, Neighborhood)
+cor(m7, method="kendall", use="pairwise") 
+
+```
+
+
+# Garage Variables
+```{r}
+m8 = cbind(SalesLog = train$SalePriceLog, GarageType, GarageFinish, GarageQual, GarageCond, PavedDrive)
+cor(m8, method="kendall", use="pairwise") 
+
+```
+GarageFinish seems to have a relationship to SalesPriceLog.
+
+# Misc Variables
+```{r}
+m9 = cbind(SalesLog = train$SalePriceLog, PoolQC, Fence, MiscFeature)
+cor(m9, method="kendall", use="pairwise") 
+
+```
+
+# Nature of Sale Variables
+```{r}
+m10 = cbind(SalesLog = train$SalePriceLog, SaleType, SaleCondition)
+cor(m10, method="kendall", use="pairwise") 
+
+```
+SaleCondition & SaleType do have a relationship.
+I would have thought that this would have had a stronger relationship. 
+
+# Remaining Variables
+```{r}
+m11 = cbind(SalesLog = train$SalePriceLog, Neighborhood, KitchenQual, MSZoning, Condition1, Condition2)
+cor(m11, method="kendall", use="pairwise") 
+
+```

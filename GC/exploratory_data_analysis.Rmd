@@ -1,6 +1,6 @@
 ---
 title: "project ivy: EDA - Gabriella"
-output: github_document
+output: rmarkdown::github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -9,7 +9,7 @@ require(knitr)
 source('src/ini.R')
 source('src/load.R')
 source('src/transform.R')
-colSums(is.na(df))
+# colSums(is.na(df))
 ```
 
 ## Overview
@@ -147,7 +147,8 @@ autoplot(km_area, data = df_area)
 
 
 ### Categorical variables
-The transformation of the categorical varibles are enclosed in the transform.R source code. A summary of the transformation is here. 
+The transformation of the categorical varibles are enclosed in the transform.R source code. A summary of the transformation is here. All Quality variables had the same ordered levels that ranked the quality of the feature from None to Excellent, these features were lanel encoded to the equaivalent numeric level. 
+Additionally, there were varaibles that, by nature & definition, were ordered. These variables were also label encoded.
 
 If we consider the Utilities variable, we see that all house except one have all public utilities. Thus, this variable doesn't offer much enrichment for Preditcion & therefore removed.
 (Removed in feature_eng.R code).
@@ -195,6 +196,7 @@ Let's ensure that all categorical features that are ordered are label encoded to
 This label encoding has been included in the **src/transform.R** code. 
 To note, features were encoded with 0 = none/ the worst in ascending order until the best value. These orders were identified in **data_descr.txt** file (by definition). 
 
+Once varaiables had been label encoded, we could develop a Correlation Matrix to display the relationship between these variables.
 ```{r}
 # Categorical varibles to consider for Correlation
 library(corrplot)
@@ -232,7 +234,7 @@ C5 = ggplot(train, aes(x = train$FireplaceQu, y = train$SalePriceLog)) + geom_po
       geom_smooth(method=lm , color="red", se=FALSE)
 C6 = ggplot(train, aes(x = train$HeatingQC., y = train$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE)
-C3
+
 library(gridExtra)
 grid.arrange(C1, C2, C3, C4, C5, C6)
 ```
@@ -247,7 +249,8 @@ One of the features I'm particularly interested in is the Neighborhood. From int
 
 ```{r}
 N1 = ggplot(train, aes(x = Neighborhood)) + geom_histogram(stat = 'count') +
-       theme(axis.text.x = element_text(angle = 90, hjust =1))
+       theme(axis.text.x = element_text(angle = 90, hjust =1)) +
+       ggtitle('Count of Houses in Neighborhood')
 N1
 ```
 From the above graph, we can see that NAmes and CollgCr are the most 'popular' neighborhoods (higher count). NAmes seems to have some variance that can't be ignored. Popularity could be dependant on many things, firstly it could be the price. Ie. Houses which are more affordable are more popular, additionally it could be based on the actual area of the neighborhood. 
@@ -263,7 +266,8 @@ N2 = ggplot(train, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y = Sal
       geom_hline(yintercept=SP_m, linetype="dashed", color = "red")  + 
       theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
       scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
-      geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2)
+      geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2) + 
+      ggtitle('Median SalesPrice of Houses in Neighborhood')
 
 N2
 ```
@@ -283,9 +287,11 @@ table(df$NeighPrice)
 ```
 
 #MSSubClass
+Let's explore MSSubClass to determine if we unlock anything interesting.
 ```{r}
 M1 = ggplot(train, aes(x = MSSubClass)) + geom_histogram(stat = 'count') +
-       theme(axis.text.x = element_text(angle = 90, hjust =1))
+       theme(axis.text.x = element_text(angle = 90, hjust =1)) + 
+  ggtitle('Count of MSSubClass')
 M1
 ```
 Comparing to Mean Price
@@ -298,7 +304,8 @@ N2 = ggplot(train, aes(x=reorder(MSSubClass, SalePrice, FUN = mean), y = SalePri
       geom_hline(yintercept=SP_mean, linetype="dashed", color = "red")  + 
       theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
       scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
-      geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2)
+      geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2) + 
+      ggtitle('Mean SalePrice per MSSubClass')
 
 N2
 ```
@@ -358,20 +365,21 @@ library(randomForest)
 
 train=train %>% mutate_if(is.character, as.factor)
 
-fit = randomForest(SalePriceLog ~ . -SalePrice,
+fit = randomForest(SalePriceLog ~ . # -SalePrice
+                   ,
                    data = train, 
                    importance = TRUE,
                    tree = 100
                    )
 
-varImpPlot(fit, n.var = min(20, nrow(fit$importance)))
-
+forest = varImpPlot(fit, n.var = min(20, nrow(fit$importance)))
+forest
 ```
 
+## GoodmanKruskal Method
 To explore these factors, we will looks at the GoodmanKruskal tau values, which describe both the forward & backward association between 2 categorical variables. 
 [GoodmanKruskal Tau][https://cran.r-project.org/web/packages/GoodmanKruskal/vignettes/GoodmanKruskal.html]
 
-## GoodmanKruskal Method
 Let's first consider the internal elements (categorical) of a house. 
 In doing so, we will look at Utilities & Electrical, KitchenQual, BsmtQual, BsmtCond, BsmtExposure, HeatingQC, CentralAir, FireplaceQu
 
@@ -393,19 +401,8 @@ From the above we can see that knowledge of Utilities & Electical aren't quite u
 We can also see that both BsmtQual & BsmtExposure are predictive/ associated to eachother. However, we can see that knowledge of BsmtQual has a higher predictive association/ correlation to BsmtCond. Thus, if considering Bsmt features it seems BsmtQual is the best bet. 
 Considering all Heating variables, it seems HeatingQC is the best one to consider as it has the highest predictive power, with the fewest number of levels. 
 
-Now that we have investigated the internal elements, let's have a look at the external factors. 
-These factors include: Roof
-```{r}
-GKtau(train$RoofStyle, train$RoofMatl) # RoofMatl higher predictive power
-GKtau(train$RoofMatl, train$ExterQual)
-GKtau(train$RoofMatl, train$ExterCond)
-
-GKtau(train$OverallCond, train$OverallQual)
-```
-
-
+Let's explore the neighborhood feeatures.
 Knowledge of Neighborhood is predictive of MSZoning
-
 
 ```{r}
 
@@ -440,64 +437,4 @@ plot(GK_matrix, diagSize = 5)
 
 
 ```
-
-## Insights from Categorical Graphs
-From looking at the boxplots of the Categorical Varibles, it seems that the following variables show the most significant variance. 
-
-These variables are:
-- Neighborhood
-- MSSubClass
-- HouseStyle
-- Exterior1st & Exterior2nd
-
-
- 
- 
- # Group Neighborhoods & MSZoning
- 
-
--- Ensure Kendall is working as it needs
--- HouseStyle (Google definition)
--- Reduce vars into smaller groups 
--- Tree based (Categorical)
--- Clustering
-
-
-## GoodmanKruskal Method
-Knowledge of Neighborhood is predictive of MSZoning
-
-```{r}
-require(GoodmanKruskal)
-require(PCAmixdata)
-# install.packages("GoodmanKruskal")
-
-# Seperate categorical features
-split = splitmix(train)
-cat_train = split$X.quali
-
-cat_train$SPLog = train$SalePriceLog
-cat_train$SPLog
-
-GKtau(train$Neighborhood, train$MSZoning)
-table(train$Neighborhood, train$MSZoning)
-
-GKtau(train$Neighborhood, train$MSZoning)
-GKtau(train$Neighborhood, as.factor(train$SalePriceLog))
-
-GKtau(train$Neighborhood, train$BldgType)
-table(train$Neighborhood, train$BldgType)
-
-GKtau(train$SaleCondition, train$SaleType)
-
-
-
-GKtau(train$MSZoning, as.factor(train$SalePriceLog))
-GKtau(as.factor(train$OverallQual), as.factor(train$SalePrice))
-
-GK_matrix = GKtauDataframe(cat_train)
-plot(GK_matrix, diagSize = 5)
-
-
-```
-
 
