@@ -53,20 +53,30 @@ factor_vars = c('MSSubClass',
                 'MiscFeature'
                 )
 
-ord_factor_vars = list(ExterQual = c('Po', 'Fa','TA', 'Gd', 'Ex'),
-              ExterCond = c('Po', 'Fa','TA', 'Gd', 'Ex'),
-              BsmtQual = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
-              BsmtCond = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
-              BsmtExposure = c('None', 'No', 'Mn','Av', 'Gd'),
-              BsmtFinType1 = c('None', 'Unf', 'LwQ','Rec', 'BLQ', 'ALQ', 'GLQ'),
-              BsmtFinType2 = c('None', 'Unf', 'LwQ','Rec', 'BLQ', 'ALQ', 'GLQ'),
-              HeatingQC = c('Po', 'Fa','TA', 'Gd', 'Ex'),
-              KitchenQual = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
-              FireplaceQu = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
-              GarageQual = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
-              GarageCond = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
-              PoolQC = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
-              Fence = c('None', 'MnWw', 'GdWo', 'MnPrv', 'GdPrv'))
+ord_factor_vars = list(
+  ExterQual = c('Po', 'Fa','TA', 'Gd', 'Ex'),
+  ExterCond = c('Po', 'Fa','TA', 'Gd', 'Ex'),
+  BsmtQual = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
+  BsmtCond = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
+  BsmtExposure = c('None', 'No', 'Mn','Av', 'Gd'),
+  BsmtFinType1 = c('None', 'Unf', 'LwQ','Rec', 'BLQ', 'ALQ', 'GLQ'),
+  BsmtFinType2 = c('None', 'Unf', 'LwQ','Rec', 'BLQ', 'ALQ', 'GLQ'),
+  HeatingQC = c('Po', 'Fa','TA', 'Gd', 'Ex'),
+  KitchenQual = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
+  FireplaceQu = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
+  GarageQual = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
+  GarageCond = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
+  PoolQC = c('None', 'Po', 'Fa','TA', 'Gd', 'Ex'),
+  Fence = c('None', 'MnWw', 'GdWo', 'MnPrv', 'GdPrv'),
+  LotShape = c('IR3', 'IR2', 'IR1', 'Reg'),
+  LandSlope = c('Sev', 'Mod', 'Gtl'),
+  CentralAir = c('N', 'Y'),
+  Functional = c('Sal', 'Sev', 'Maj2', 'Maj1', 'Mod', 'Min2', 'Min1', 'Typ'),
+  GarageFinish = c('None', 'Unf', 'RFn', 'Fin'),
+  PavedDrive = c('N', 'P', 'Y')
+  )
+
+
 
 
 # explicitly set NA's based on data_desc.txt
@@ -97,22 +107,3 @@ for(name in names(ord_factor_vars)){
 
 rm(name)
 
-# remodeled Yes/No
-# basement Yes/No
-# garage Yes/No
-# WoodDeck Yes/No
-# Porch Yes/No
-# Pool Yes/No
-# Age
-# GarageType Binary groups
-# Condition2 Binary groups
-# Neighborhood
-# RoofMatl Binary WdShngl
-# MSZoning Binary Commercial
-# Functional
-# Heating
-# ExterQual
-
-
-# BsmtUnfSF/TotalBsmtSF - ratio >> maybe rather use complement as it'll ...
-# GrLivArea/total home area

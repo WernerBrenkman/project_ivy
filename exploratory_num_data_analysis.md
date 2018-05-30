@@ -43,7 +43,7 @@ There are 21 variables containing NA's. Note the following:
 
 We will now impute the missing values using the k Nearest Neighbours algorithm in the package **VIM**. Imputation was done using **k**=3.
 
-Let's visualise the missingness in the data set and also the results after imputation. ![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/impute_viz-1.png)
+Let's visualise the missingness in the data set and also the results after imputation. ![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/impute_viz-1.png)
 
     ##      Variable Missing
     ## 1 GarageYrBlt     159
@@ -56,15 +56,15 @@ Visualisation
 
 Remainder of this document will focus on numeric/integer values only. Categorical variables will be explored in another document. First we need to assess the target variable for normality.
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/viz-1.png) By inspecting the histogram and QQ-plot for **SalePrice** one can see that the variable is not normally distributed. Experience has shown that applying log10 to variables like **SalePrice** would normalise the data. This makes intuitive sense, because a $10k difference is more significant when the sale price is $30k compared to when the sale price is $1m. Compare the histogram and QQ-plot for **SalePriceLog** to confirm this.
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/viz-1.png) By inspecting the histogram and QQ-plot for **SalePrice** one can see that the variable is not normally distributed. Experience has shown that applying log10 to variables like **SalePrice** would normalise the data. This makes intuitive sense, because a $10k difference is more significant when the sale price is $30k compared to when the sale price is $1m. Compare the histogram and QQ-plot for **SalePriceLog** to confirm this.
 
 We'll be using **SalePriceLog** from now on, because it is closer to a normal distribution.
 
 ### Numeric variables
 
-Let's get an overview of the numeric variables ![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-1-1.png)
+Let's get an overview of the numeric variables ![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-1-1.png)
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-2-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-2-1.png)
 
 Note the following: Some variables contain outliers. If you are going to do clustering this is imporant to note, because some algorithms are sensitive to outliers. Some variables display a double correlation pattern. This is only visible when you set the points in the plot to be transparent. (Example: TotalBsmtSF, x\_1stFlrSF)
 
@@ -84,7 +84,7 @@ When reading **data\_descr.txt** it is clear that some variables are highly corr
     ## GarageArea   0.4449505   0.5645671  0.8314807  1.0000000    0.3823228
     ## YearRemodAdd 0.6180581   0.6422768  0.4506592  0.3823228    1.0000000
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-4-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-4-1.png)
 
 From the above we can see that there is a very high correlation between **YearBuilt** & **GarageYrBlt** as well as **GarageCars** & **GarageArea**. Another point to note is that each of **GarageYrBlt**, **GarageCars** & **GarageArea** indicates the lack of a garage on the property. From here on we will only use **YearBuilt** and **GarageArea** as these variables contains info regarding the age of the property (and garage), if there is in fact a garage and its size.
 
@@ -103,27 +103,27 @@ During the iterative process of modelling we have engineered a few features. Som
 
 As stated earlier there are two clusters of points that can be identified when looking at the scatterplots for **rat\_Lot\_1stFlr** & **rat\_garag\_land**. It is also interesting to note the strong linear relationship betwee **PC1** and **SalePrice**
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-6-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-6-1.png)
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-7-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-7-1.png)
 
 #### Clustering
 
 It would make sense that bigger houses are more expensive. As a first go at clustering this data set we take area related variables and assess the impact of area on **SalePrice**. Because we know that there are multiple outliers in the data we will use the k-medoids algorithm rather than k-means.
 
-    ## [1] "Hopkins statistic: 0.910685"
+    ## [1] "Hopkins statistic: 0.911098"
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-9-1.png) The Hopkins statistic suggest that the data is highly clusterable. Visual inspection is less positive with Spearman showing the most promise.
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-9-1.png) The Hopkins statistic suggest that the data is highly clusterable. Visual inspection is less positive with Spearman showing the most promise.
 
-Let's cluster using PAM with the Pearson distance measure. But first, what is the optimal value of **k**?
+Let's cluster using PAM with the Spearman distance measure. But first, what is the optimal value of **k**?
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png) **k** = 3 seems to be the clear favourite, but let's explore **k** = 2,4 as well.
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png) **k** = 3 seems to be the clear favourite, but let's explore **k** = 2,4 as well.
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png)
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png)
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-14-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-14-1.png)
 
 Doing PCA on these variable and plotting the data using PC1 (Not to be confused with the principal component **PC1** that was feature engineered) & PC2 it seems the data naturally splits into 2 clusters as was indicated earlier when we noted two clusters appearing when investigating the scatteplots of **rat\_Lot\_1stFlr** & **rat\_garag\_land** vs **SalePriceLog**.
 
@@ -133,69 +133,69 @@ To validate the clusters we use a silhouette plot. The silhouette plot displays 
 -   Values close to 0 means that the observation lies between 2 clusters
 -   Observations with negative values are in the wrong cluster.
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-15-1.png) Visual inspection certainly suggest 2 clusters, which is further confirmed by the higher average silhouette width. The fact that the silhoutte widths for **k**&gt;2 drop close the 0 so fast also indicates miss-classification of observation. We should use 2 clusters only.
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-15-1.png) Visual inspection certainly suggest 2 clusters, which is further confirmed by the higher average silhouette width. The fact that the silhoutte widths for **k**&gt;2 drop close the 0 so fast also indicates miss-classification of observation. We should use 2 clusters only.
 
-![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png)
+![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png)
 
     ## # A tibble: 2 x 3
     ##   cl2        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     187682. 81997.
-    ## 2 2     175688. 77051.
+    ## 1 1     187245. 84269.
+    ## 2 2     175847. 75014.
 
     ## # A tibble: 3 x 3
     ##   cl3        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     191951. 77880.
-    ## 2 2     135784. 37966.
-    ## 3 3     232945. 90324.
+    ## 1 1     190654. 77673.
+    ## 2 2     136276. 38718.
+    ## 3 3     230613. 90701.
 
     ## # A tibble: 4 x 3
     ##   cl4        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     199947. 74577.
-    ## 2 2     150060. 41781.
-    ## 3 3     235889. 88596.
-    ## 4 4     125979. 50128.
+    ## 1 1     202615. 74617.
+    ## 2 2     148644. 41797.
+    ## 3 3     239326. 89333.
+    ## 4 4     128497. 50210.
 
 Even though **k**=2 looks like the best cluster to use, it unfortunately does not add any value in terms of discriminating **SalePriceLog** as can be seen by the density plots of **SalePriceLog** grouped by clusters. Maybe we should try hierarchical clustering?
 
     ## $centroid
-    ## [1] 0.6010338
+    ## [1] 0.6095305
     ## 
     ## $ward.D2
-    ## [1] 0.5987971
+    ## [1] 0.5559533
     ## 
     ## $single
-    ## [1] 0.0765771
+    ## [1] 0.06430322
     ## 
     ## $average
-    ## [1] 0.6318328
+    ## [1] 0.6375944
     ## 
     ## $complete
-    ## [1] 0.4820186
+    ## [1] 0.4967888
 
-The correlation coefficient shows that using the average method gave the closest fit to the original data. ![](exploratory_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-18-1.png)
+The correlation coefficient shows that using the average method gave the closest fit to the original data. ![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-18-1.png)
 
     ## # A tibble: 3 x 3
     ##   cl2        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     188249. 74476.
-    ## 2 2     143176. 53647.
-    ## 3 3     230404. 92061.
+    ## 1 1     186352. 82045.
+    ## 2 2     218989. 79010.
+    ## 3 3     137206. 49421.
 
     ## # A tibble: 3 x 3
     ##   cl3        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     188249. 74476.
-    ## 2 2     143176. 53647.
-    ## 3 3     230404. 92061.
+    ## 1 1     186352. 82045.
+    ## 2 2     218989. 79010.
+    ## 3 3     137206. 49421.
 
     ## # A tibble: 3 x 3
     ##   cl4        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     188249. 74476.
-    ## 2 2     143176. 53647.
-    ## 3 3     230404. 92061.
+    ## 1 1     186352. 82045.
+    ## 2 2     218989. 79010.
+    ## 3 3     137206. 49421.
 
 Again, hierarchical cluster also doesn't assist in discriminating **SalePriceLog**.

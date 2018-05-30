@@ -76,8 +76,7 @@ Remainder of this document will focus on numeric/integer values only. Categorica
 df = df %>%
   mutate(SalePriceLog = ifelse(set_id == '1', log10(SalePrice), NA))
 
-train$f = as.factor(ifelse(train$Id %in% x_below$Id, 'below', ifelse(train$Id %in% x_above$Id, 'above', NA)))
-p = ggplot(train[!is.na(train$f),]) + theme_bw() # ggplot(filter(df, set_id == '1')) + theme_bw()
+p = ggplot(filter(df, set_id == '1')) + theme_bw() # ggplot(filter(df, set_id == '1')) + theme_bw()
 
 multiplot(p + geom_histogram(aes(x = SalePrice)),
           p + geom_histogram(aes(x = SalePriceLog)),
@@ -95,9 +94,9 @@ Let's get an overview of the numeric variables
 ```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
 draw_corplot = function(var, scale_x_log10 = FALSE, alpha = .3){
   if(scale_x_log10){  
-    p + geom_point(aes_string(x = var, y = 'SalePriceLog', col = 'f'), alpha = alpha) + ggtitle(var) + scale_x_log10()
+    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = alpha) + ggtitle(var) + scale_x_log10()
   }else{  
-    p + geom_point(aes_string(x = var, y = 'SalePriceLog', col = 'f'), alpha = alpha) + ggtitle(var)
+    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = alpha) + ggtitle(var)
   }
 }
 plotlist = lapply(filter(df, set_id == '1'), function(x){ifelse(class(x) %in% c('integer', 'numeric'), 1, NA)}) %>% unlist()
