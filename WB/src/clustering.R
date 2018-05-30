@@ -28,7 +28,7 @@ d_prsn = get_dist(df_area, method = 'spearman')
 
 # k-mediods using pam. Also less sensitive to outliers
 # =========================================
-pam = pam(x = d_prsn, diss = TRUE, k=3)
+pam = pam(x = d_prsn, diss = TRUE, k=2)
 clusters = data.frame(Id = df[['Id']], area_cl = as.factor(pam[['clustering']]))
 
 

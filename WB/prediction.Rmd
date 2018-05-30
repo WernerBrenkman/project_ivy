@@ -123,7 +123,8 @@ require(car)
 vif(lm_models$cluster$fit)
 summary(lm_models$cluster$fit)
 ```
-Let's remove variables that where the VIF > 5 **or** are not significant. 
+
+Let's remove variables where the VIF > 5 **or** are not significant. 
 For the cluster model these include: **GrLivArea**, **LotFrontage**, **MasVnrArea**.
 For the cluster model these include: **PC6**, **PC8**, **PC13**.
 
@@ -180,7 +181,7 @@ lm_models$saturated_step = f_update_model(do_predict = TRUE,
                                               scope = list(lower = formula(lm(SalePriceLog ~ 1, data = train)),
                                                            upper = lm_models$satured$formula)))
 write_csv(lm_models$saturated_step$pred, 'data/pred_satured_step.csv')
-lm_models$saturated_step$pred_score = 0.13136
+lm_models$saturated_step$pred_score = 0.13113
 f_print_results()
 ```
 
@@ -251,13 +252,31 @@ But what can we learn? Which variables are redundant?
 
 ```{r}
 
-reg_models$ridge$lambda
-coef(reg_models$ridge$fit)[, which(reg_models$ridge$fit$lambda == reg_models$ridge$lambda )]
-
-
+# reg_models$ridge$lambda
+# coef(reg_models$ridge$fit)[, which(reg_models$ridge$fit$lambda == reg_models$ridge$lambda )]
+# 
+# 
 reg_models$lasso$lambda
 c = coef(reg_models$lasso$fit)[, min(which(reg_models$lasso$fit$lambda <= reg_models$lasso$lambda ))]
 c[c != 0] %>% names() %>% sort()
+
+
+
+# Residual analysis
+lasso_pred = predict(reg_models$ridge$fit, s = reg_models$ridge$lambda, newx = X) %>% as.vector()
+
+df_res = data.frame(train, pred = lasso_pred)
+
+f_err(df_res$SalePriceLog, df_res$pred)
+
+ggplot(df_res) +
+  geom_point(aes(SalePriceLog, rat_1stFlr_GrLiv), alpha=.3) + facet_wrap(~NeighborhoodClass)
+
+
+df_res %>%
+  group_by(NeighborhoodClass) %>%
+  summarise(n=n(), mu=mean(SalePriceLog), err = f_err(SalePriceLog, pred)) %>%
+  arrange(NeighborhoodClass)
 
 ```
 
@@ -288,7 +307,17 @@ if(optim){
 
 #Fitting an initial random forest to the training subset.
 set.seed(0)
-rf_fit = randomForest(SalePriceLog ~ ., data = train, importance = TRUE)
+rf_fit = randomForest(SalePriceLog ~ MSZoning + LotArea + Utilities + 
+    LotConfig + LandSlope + Neighborhood + Condition1 + Condition2 + 
+    BldgType + OverallQual + OverallCond + YearBuilt + YearRemodAdd + 
+    RoofMatl + Exterior1st + MasVnrType + MasVnrArea + ExterCond + 
+    Foundation + BsmtQual + BsmtCond + BsmtExposure + BsmtFinType1 + 
+    BsmtFinSF1 + BsmtFinSF2 + BsmtUnfSF + Heating + HeatingQC + 
+    CentralAir + x_1stFlrSF + x_2ndFlrSF + BsmtFullBath + FullBath + 
+    HalfBath + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + 
+    Functional + Fireplaces + GarageType + GarageArea + GarageQual + 
+    WoodDeckSF + EnclosedPorch + ScreenPorch + PoolArea + rat_Lot_1stFlr + 
+    rat_1stFlr_GrLiv, data = train, importance = TRUE)
 
 varImp = importance(rf_fit) %>% as.data.frame()
 varImp[order(-varImp$`%IncMSE`), ]
@@ -297,7 +326,24 @@ varImpPlot(rf_fit)
 rf_pred = 10^predict(rf_fit, test)
 write_csv(data.frame(Id = test$Id, SalePrice = rf_pred %>% as.vector()), 'data/pred_rf.csv')
 # 0.14080
-# 
+
+# Residual analysis
+f_err(train$SalePriceLog, predict(rf_fit, train))
+
+
+
+
 ```
 
+```{r}
+x = c('NeighborhoodClass', 'LotArea', 'rat_Lot_1stFlr', 'rat_garag_land', 'rat_1stFlr_GrLiv', 'PC1', 'SalePriceLog', 'cred_bubble')
+lm_x = lm(SalePriceLog ~., data = train[,x])
+summary(lm_x)
+
+
+mean((predict(lm_x, train) - train$SalePriceLog)^2)
+
+10^predict(lm_x, train)
+
+```
 

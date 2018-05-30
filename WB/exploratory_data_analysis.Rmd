@@ -9,6 +9,7 @@ require(knitr)
 require(cluster) 
 require(factoextra)
 require(GGally)
+require(ggplot2)
 source('src/ini.R')
 source('src/load.R')
 source('src/transform.R')
@@ -50,7 +51,9 @@ There are 21 variables containing NA's. Note the following:
 *  **SalesPrice** is missing because the **test** data was merged with the **train** data. That leaves us with 20 variables containing NA's.
 *  **GarageYrBlt** will be NA if there is no garage on the property
 
-Let's visualise missing
+We will now impute the missing values using the k Nearest Neighbours algorithm in the package **VIM**. Imputation was done using **k**=3.
+
+Let's visualise the missingness in the data set and also the results after imputation. 
 ```{r impute_viz, echo=FALSE, warning=FALSE, message=FALSE}
 require(VIM)
 df %>%
@@ -63,38 +66,47 @@ df %>%
 source('src/impute.R')
 print_na_cols()
 ```
+After imputation the only variables that still contains missing values are **GarageYrBlt** & **SalePrice**. As stated earlier this is to be expected. **GarageYrBlt** will be investigated further, but the missing values in **SalePrice** will be addressed once the data set is split into a **train** & **test** sets.
+
 
 ## Visualisation
+Remainder of this document will focus on numeric/integer values only. Categorical variables will be explored in another document. First we need to assess the target variable for normality.
 
-Notice **SalePrice** vs **SalePriceLog**. We'll be using **SalePriceLog** from now on, because it is closer to a normal distribution.
-
-```{r viz, echo=FALSE, fig.width=10, fig.asp=.5}
+```{r viz, echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.asp=.5}
 df = df %>%
   mutate(SalePriceLog = ifelse(set_id == '1', log10(SalePrice), NA))
 
-p = ggplot(filter(df, set_id == '1')) + theme_bw()
+train$f = as.factor(ifelse(train$Id %in% x_below$Id, 'below', ifelse(train$Id %in% x_above$Id, 'above', NA)))
+p = ggplot(train[!is.na(train$f),]) + theme_bw() # ggplot(filter(df, set_id == '1')) + theme_bw()
+
 multiplot(p + geom_histogram(aes(x = SalePrice)),
           p + geom_histogram(aes(x = SalePriceLog)),
           p + stat_qq(aes(sample=SalePrice)),
           p + stat_qq(aes(sample=SalePriceLog)),
           cols = 2)
 ```
+By inspecting the histogram and QQ-plot for **SalePrice** one can see that the variable is not normally distributed. Experience has shown that applying log10 to variables like **SalePrice** would normalise the data. This makes intuitive sense, because a $10k difference is more significant when the sale price is $30k compared to when the sale price is $1m. Compare the histogram and QQ-plot for **SalePriceLog** to confirm this.
+
+We'll be using **SalePriceLog** from now on, because it is closer to a normal distribution.
+
 
 ### Numeric variables
 Let's get an overview of the numeric variables
 ```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
 draw_corplot = function(var, scale_x_log10 = FALSE, alpha = .3){
   if(scale_x_log10){  
-    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = alpha) + ggtitle(var) + scale_x_log10()
+    p + geom_point(aes_string(x = var, y = 'SalePriceLog', col = 'f'), alpha = alpha) + ggtitle(var) + scale_x_log10()
   }else{  
-    p + geom_point(aes_string(x = var, y = 'SalePriceLog'), alpha = alpha) + ggtitle(var)
+    p + geom_point(aes_string(x = var, y = 'SalePriceLog', col = 'f'), alpha = alpha) + ggtitle(var)
   }
 }
 plotlist = lapply(filter(df, set_id == '1'), function(x){ifelse(class(x) %in% c('integer', 'numeric'), 1, NA)}) %>% unlist()
 var_names = names(plotlist)[which(plotlist == 1)]
 var_names = var_names[var_names != 'Id']
 plotlist = lapply(var_names, function(x){draw_corplot(x)})
-multiplot(cols = 5, plotlist = plotlist)
+multiplot(cols = 6, plotlist = plotlist)
+
+# BsmtQual, HeatingQC, BedroomAbvGr, BsmtCond, KitchenQual, OverallQual, TotRmsAbvGr, YearBuilt, YearRemodAdd, ExterQual, FullBath, GarageCond
 ```
 
 ```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
@@ -116,7 +128,7 @@ cor(cor_dat)
 ```
 When reading **data_descr.txt** it is clear that some variables are highly correlated purely by definition. Let's explore those in detail and decide which to keep.
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.asp=.5}
 cor_def_vars = c('YearBuilt', 'GarageYrBlt', 'GarageCars', 'GarageArea', 'YearRemodAdd')
 
 cor(df[df$set_id == '1', cor_def_vars], use = "complete.obs")
@@ -127,12 +139,35 @@ multiplot(cols = 2, plotlist = list(
 ))
 
 ```
-From the above we can see that there is a very high correlation between **YearBuilt** & **GarageYrBlt** as well as **GarageCars** & **GarageArea**. Another point to note is that each of **GarageYrBlt**, **GarageCars** & **GarageArea** indicates the lack of a garage on the property. From here on we will only use**YearBuilt** and **GarageArea** as these variables contains info regarding the age of the property (and garage), if there is in fact a garage and its size.
 
-```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
+From the above we can see that there is a very high correlation between **YearBuilt** & **GarageYrBlt** as well as **GarageCars** & **GarageArea**. Another point to note is that each of **GarageYrBlt**, **GarageCars** & **GarageArea** indicates the lack of a garage on the property. From here on we will only use **YearBuilt** and **GarageArea** as these variables contains info regarding the age of the property (and garage), if there is in fact a garage and its size.
+
+### Feature engineering & PCA
+During the iterative process of modelling we have engineered a few features. Some based on intuition, some on analysis and others using machine learning techniques. We discuss these now.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 source('src/feature_eng.R')
 source('src/pca.R')
+```
 
+*  **NeighborhoodClass**: Assigned each Neighborhood to one of 10 classes (deciles of **SalePriceLog**) according to the median **SalePriceLog** of each **Neighborhood**.
+*  **LotArea** = log10(**LotArea**),
+*  **SalePriceLog** = log10(**SalePrice**) (as stated above)
+*  **rat_Lot_1stFlr** = **x_1stFlrSF** / **LotArea**
+*  **rat_garag_land** = **GarageArea** / **LotArea**
+*  **rat_1stFlr_GrLiv** = log10(**x_1stFlrSF** * **GrLivArea**)
+*  **cred_bubble** = as.factor(ifelse(**YrSold** < 2008, '1', '2'))
+*  **PC1**: This is the first principal component as a result of performing PCA on all numeric/integer variables. We isolated all principal components where the correlation with **SalePriceLog** is >.75 and added these are feature variables.
+
+As stated earlier there are two clusters of points that can be identified when looking at the scatterplots for **rat_Lot_1stFlr** & **rat_garag_land**. It is also interesting to note the strong linear relationship betwee **PC1** and **SalePrice**
+
+```{r, fig.width=10, fig.asp=.75, echo=FALSE, warning=FALSE, message=FALSE}
+p = ggplot(filter(df, set_id == '1')) + theme_bw()
+plotlist = lapply(c('NeighborhoodClass', 'LotArea', 'rat_Lot_1stFlr', 'rat_garag_land', 'rat_1stFlr_GrLiv', 'PC1'), function(x){draw_corplot(x)})
+multiplot(cols = 3, plotlist = plotlist)
+```
+
+```{r, fig.width=10, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
 var_names = lapply(filter(df, set_id == '1'), function(x){ifelse(class(x) %in% c('integer', 'numeric'), 1, NA)}) %>% unlist()
 var_names = names(var_names)[which(var_names == 1)]
 var_names = var_names[var_names != 'Id']
@@ -140,8 +175,10 @@ ggcorr(filter(df, set_id == '1')[, var_names], nbreaks = 4, palette = "RdGy", la
 
 ```
 
+
+
 #### Clustering
-It would make sense that bigger houses are more expensive. Let's cluster all area related variables and assess the impact of area on **SalePrice**. Because we know that there are multiple outliers in the data we will use the k-medoids algorithm rather than k-means. We'll also explore hierarchical clustering.
+It would make sense that bigger houses are more expensive. As a first go at clustering this data set we take area related variables and assess the impact of area on **SalePrice**. Because we know that there are multiple outliers in the data we will use the k-medoids algorithm rather than k-means.
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 area_vars = c('LotFrontage',
@@ -152,15 +189,12 @@ area_vars = c('LotFrontage',
               'GrLivArea',
               'GarageArea',
               'OverallQual',
-              # 'OverallCond',
               'x_1stFlrSF',
               'x_2ndFlrSF',
-              # 'WoodDeckSF', 
-              # 'OpenPorchSF', 
-              # 'EnclosedPorch', 
-              # 'x_3SsnPorch', 
-              # 'ScreenPorch', 
-              'PoolArea'
+              'PoolArea',
+              'rat_Lot_1stFlr',
+              'rat_garag_land',
+              'OverallQual'
               )
 df_area = scale(train[, area_vars]) %>%
   as.data.frame()
@@ -189,9 +223,9 @@ multiplot(cols = 2, plotlist = list(
 ))
 rm(d_euc, d_man)
 ```
-The Hopkins statistic suggest that the data is highly clusterable. Visual inspection is less positive with Pearson showing the most promise.
+The Hopkins statistic suggest that the data is highly clusterable. Visual inspection is less positive with Spearman showing the most promise.
 
-Let's cluster using PAM with the Pearson distance measure. But first, what is the optimal value of **k**?
+Let's cluster using PAM with the Spearman distance measure. But first, what is the optimal value of **k**?
 
 ```{r, fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
 plotlist = list(
@@ -228,13 +262,14 @@ viz_cluster = function(dat, axes, clusters){
   dat$cl = clusters
   dat[, c(cols, 'cl')] %>%
     ggplot(.) +
-    geom_point(aes_string(x=cols[1], y = cols[2], col='cl'), alpha=.3) + 
+    stat_density2d(aes_string(x=cols[1], y = cols[2], col='cl')) +
+    # geom_point(aes_string(x=cols[1], y = cols[2], col='cl'), alpha=.2) + 
     theme_bw() %>%
     return(.)
 
 }
 
-axes_l = list(c(1, 2), c(2, 3), c(1, 3))
+axes_l = list(c(1, 2), c(3, 2), c(1, 3))
 plotlist = list()
 for(i in 1:length(axes_l)){
     axes = axes_l[[i]]
@@ -254,52 +289,90 @@ for(i in 1:length(axes_l)){
 
 ```{r,fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
   multiplot(cols = length(axes_l), plotlist = plotlist[[2]])
-           
 ```
 
 ```{r,fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
    multiplot(cols = length(axes_l), plotlist = plotlist[[3]])
-          
 ```
 
-It seems the data naturally splits into 2 clusters.
+Doing PCA on these variable and plotting the data using PC1 (Not to be confused with the principal component **PC1** that was feature engineered) & PC2  it seems the data naturally splits into 2 clusters as was indicated earlier when we noted two clusters appearing when investigating the scatteplots of **rat_Lot_1stFlr** & **rat_garag_land** vs **SalePriceLog**.
+
+To validate the clusters we use a silhouette plot.  The silhouette plot displays a measure of how close each point in one cluster is to points in the neighboring clusters. The silhoutte is interpreted as follows:
+
+*  A value close to 1 means the observation is well clustered
+*  Values close to 0 means that the observation lies between 2 clusters
+*  Observations with negative values are in the wrong cluster.
 
 ```{r,fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
 plotlist = list(
-fviz_silhouette( pam2, palette = "jco",
+fviz_silhouette( pam2, palette = "jco", print.summary = FALSE,
                  ggtheme = theme_classic()),
 
-fviz_silhouette( pam3, palette = "jco",
+fviz_silhouette( pam3, palette = "jco", print.summary = FALSE,
                  ggtheme = theme_classic()),
 
-fviz_silhouette( pam4, palette = "jco",
+fviz_silhouette( pam4, palette = "jco", print.summary = FALSE,
                  ggtheme = theme_classic())
 )
 
 multiplot(cols = 3, plotlist = plotlist)
                  
 ```
-Visual inspection certainly suggest 2 clusters, which is further confirmed by the higher average silhouette width.
+Visual inspection certainly suggest 2 clusters, which is further confirmed by the higher average silhouette width. The fact that the silhoutte widths for **k**>2 drop close the 0 so fast also indicates miss-classification of observation. We should use 2 clusters only.
 
 ```{r, fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
-tst = data.frame(SalePrice=train[['SalePrice']], 
+tst = data.frame(SalePriceLog=train[['SalePrice']],
+                 NeighborhoodClass=train[['Neighborhood']],
                  cl2 = as.factor(pam2$clustering), 
                  cl3 = as.factor(pam3$clustering), 
                  cl4 = as.factor(pam4$clustering))
 
 plotlist = list(
-ggplot(tst) + geom_density(aes(SalePrice,group=cl2, colour=cl2)),
-ggplot(tst) + geom_density(aes(SalePrice,group=cl3, colour=cl3)),
-ggplot(tst) + geom_density(aes(SalePrice,group=cl4, colour=cl4))
+ggplot(tst) + geom_density(aes(SalePriceLog,group=cl2, colour=cl2)),
+ggplot(tst) + geom_density(aes(SalePriceLog,group=cl3, colour=cl3)),
+ggplot(tst) + geom_density(aes(SalePriceLog,group=cl4, colour=cl4))
 )
 multiplot(cols = 3, plotlist = plotlist)
 
+tst %>% group_by(cl2) %>% summarise(mu = mean(SalePriceLog), sd = sd(SalePriceLog))
+tst %>% group_by(cl3) %>% summarise(mu = mean(SalePriceLog), sd = sd(SalePriceLog))
+tst %>% group_by(cl4) %>% summarise(mu = mean(SalePriceLog), sd = sd(SalePriceLog))
 
-setDT(tst)
-tst[, .(mu = mean(SalePrice), sd = sd(SalePrice)), cl2] %>% print(.)
-tst[, .(mu = mean(SalePrice), sd = sd(SalePrice)), cl3] %>% print(.)
-tst[, .(mu = mean(SalePrice), sd = sd(SalePrice)), cl4] %>% print(.)
 
 ```
 
-Although there seems to be 2 clear clusters from a spatial point of view it doesn't seem to have a specific impact on the **SalePrice**
+Even though **k**=2 looks like the best cluster to use, it unfortunately does not add any value in terms of discriminating **SalePriceLog** as can be seen by the density plots of **SalePriceLog** grouped by clusters. Maybe we should try hierarchical clustering?
+
+```{r, fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
+
+hc_methods = c('centroid', 'ward.D2', 'single', 'average', 'complete')
+hc = lapply(hc_methods, function(x){hclust(d = d_prsn, method = x)})
+names(hc) = hc_methods
+hc_cor = lapply(hc, function(x){cor(cophenetic(x), d_prsn)})
+print(hc_cor)
+```
+The correlation coefficient shows that using the average method gave the closest fit to the original data.
+```{r, fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
+hc_grps = lapply(2:4, function(x){cutree(hc$average, k=3)})
+
+hc_tst = data.frame(SalePriceLog=train[['SalePrice']],
+                 NeighborhoodClass=train[['Neighborhood']],
+                 cl2 = as.factor(hc_grps[[1]]), 
+                 cl3 = as.factor(hc_grps[[2]]), 
+                 cl4 = as.factor(hc_grps[[3]]))
+
+plotlist = list(
+ggplot(hc_tst) + geom_density(aes(SalePriceLog,group=cl2, colour=cl2)),
+ggplot(hc_tst) + geom_density(aes(SalePriceLog,group=cl3, colour=cl3)),
+ggplot(hc_tst) + geom_density(aes(SalePriceLog,group=cl4, colour=cl4))
+)
+multiplot(cols = 3, plotlist = plotlist)
+
+hc_tst %>% group_by(cl2) %>% summarise(mu = mean(SalePriceLog), sd = sd(SalePriceLog))
+hc_tst %>% group_by(cl3) %>% summarise(mu = mean(SalePriceLog), sd = sd(SalePriceLog))
+hc_tst %>% group_by(cl4) %>% summarise(mu = mean(SalePriceLog), sd = sd(SalePriceLog))
+
+```
+Again, hierarchical cluster also doesn't assist in discriminating **SalePriceLog**.
+
+

@@ -1,0 +1,285 @@
+---
+title: "Pred"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source('app.R')
+
+
+# remove redundant vars
+redunant_vars = c('set_id', 'Id', 'SalePrice', 'SaleCondition', 'SaleType', 'MSSubClass')
+train[, redunant_vars] = NULL
+test[, redunant_vars[-2]] = NULL
+df[, redunant_vars] = NULL
+
+
+# functions
+f_err = function(actual, predicted){
+  return(sqrt(mean((actual - predicted)^2)))
+}
+f_print_results = function(){
+  results = data.frame(
+    AdjRsq = lapply(lm_models, '[[', 'arsq') %>% unlist() %>% round(., 3),
+    TrainError = lapply(lm_models, '[[', 'err') %>% unlist() %>% round(., 3),
+    TestError = lapply(lm_models, '[[', 'pred_score') %>% unlist() %>% round(., 3))
+  print(results)
+}
+```
+
+## Multiple linear regression
+
+*  Fit saturated model to get a benchmark
+*  Variable selection using step procedure
+*  Diagnostics
+*  Predict and submit to Kaggle
+
+#### Saturated model
+
+```{r saturated, warning=FALSE, message=FALSE}
+# models list object
+mdls = list(saturated = list(), step = list())
+
+# fit saturated model
+mdls$saturated$formula = formula(SalePriceLog ~ .)
+mdls$saturated$fit = lm(mdls$saturated$formula, data = train)
+mdls$saturated$train_error = sqrt(mean(mdls$saturated$fit$residuals^2))
+
+# diagnostic plots 
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+plot(mdls$saturated$fit)
+
+# predictions
+mdls$saturated$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$saturated$fit, test))
+
+# summary(mdls$saturated$fit)
+anova(mdls$saturated$fit)
+# require(car)
+# summary(mdls$saturated$fit)
+
+```
+There are too many variables in this model to plot here instead we plot the results of the anova test. We have a look at the diagnostic plots instead and that the Adj. R-Squared value for this model is **0.9326**.
+
+
+#### Variable selection using stepwise procedure
+
+Using a saturated model isn't practical and adds additional noise. We will try to reduce the number variables to only significant variables. Let's choose variables by AIC in a Stepwise Algorithm. 
+
+```{r step, warning=FALSE, message=FALSE}
+
+# fit step model
+require(MASS)
+mdls$step$fit = step(mdls$saturated$fit,
+                     direction = "both",
+                     k=2,
+                     trace = FALSE,
+                     scope = list(lower = formula(lm(SalePriceLog ~ 1, data = train)),
+                                  upper = mdls$saturated$formula))
+mdls$step$formula = formula(mdls$step$fit)
+mdls$step$train_error = sqrt(mean(mdls$step$fit$residuals^2))
+
+# predictions
+mdls$step$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$step$fit, test))
+
+```
+
+The stepwise model suggest using `r nrow(anova(mdls$step$fit))` of the original `r nrow(anova(mdls$saturated$fit))` variables. That is a reduction of `r nrow(anova(mdls$saturated$fit)) - nrow(anova(mdls$step$fit))`, but are we losing any information? Use anova test to ensure we don't loose any information.
+
+```{r compare, warning=FALSE, message=FALSE} 
+# compare step vs saturated
+anova(mdls$step$fit, mdls$saturated$fit)
+```
+The anova test indicates that we can remove these variables, without significant loss of information.
+```{r diag, warning=FALSE, message=FALSE}
+# diagnostics
+summary(mdls$step$fit)
+```
+
+The **step** model attained and Adj. R-Squared value of 0.933, which is very high. It is also very similar to that of the **saturated** model. The summary indicates that there are multiple variables that are significant. What is worrying is that many of the levels in the various factor variables are not significant. Maybe additional feature engineering could be done to isolate significant levels. It is out of scope for this project.
+
+```{r diag, warning=FALSE, message=FALSE}
+# diagnostics
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+plot(mdls$step$fit)
+```
+
+Residuals seem to be normally distributed for the most part. The residual plot doesn't display any patterns, but the QQ-plot does indicate that there are outliers in the data.
+
+
+```{r diag, warning=FALSE, message=FALSE}
+# diagnostics
+require(car)
+vif(mdls$step$fit)
+```
+
+VIF indicates that **PC1** and **rat_1stFlr_GrLiv** should be removed, but the values are border-line. Let's assess the impact of removing these variables.
+
+```{r compare, warning=FALSE, message=FALSE}
+# compare step vs step_reduced
+mdls$step_reduced$formula = update.formula(mdls$step$formula, ~ . - PC1 - rat_1stFlr_GrLiv)
+mdls$step_reduced$fit = lm(mdls$step_reduced$formula, data = train)
+anova(mdls$step_reduced$fit, mdls$step$fit)
+```
+The anova test suggest that removal of **PC1** and **rat_1stFlr_GrLiv** leads to a significant different output, hence we should not remove these variables.
+
+#### Prediction
+
+We now predict using the **test** data and submit it to Kaggle for validation. One can see that the **step** model achieved slightly better results although we have removed `r nrow(anova(mdls$saturated$fit)) - nrow(anova(mdls$step$fit))` variables.
+```{r predict, warning=FALSE, message=FALSE}
+write_csv(mdls$saturated$pred, 'data/saturated.csv')
+write_csv(mdls$step$pred, 'data/step.csv')
+mdls$saturated$test_error = 0.13606
+mdls$step$test_error = 0.13171
+
+results = data.frame(
+  TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
+  TestError = lapply(mdls, '[[', 'test_error') %>% unlist() %>% round(., 3))
+print (results)
+```
+
+## Regularization
+
+Next we will investigate **ridge** & **lasso** regression models. These algorithms are known for efficiency and accuracy.
+
+```{r regularization, warning=FALSE, message=FALSE}
+require(glmnet)
+
+# prep data
+# ---------------
+X = dplyr::select(train, -SalePriceLog) %>%
+  data.matrix()
+Y = dplyr::select(train, SalePriceLog) %>%
+  data.matrix()
+Z = dplyr::select(test, -Id) %>%
+  data.matrix()
+grid_r = 10^seq(3, -5, length = 200)
+grid_l = 10^seq(3, -5, length = 200)
+i = sample(1:nrow(X), 7*nrow(X)/10)
+
+
+# fit
+# ---------------
+mdls$ridge$fit = glmnet(x = X, y = Y, lambda = grid_r, alpha = 0)
+mdls$lasso$fit = glmnet(x = X, y = Y, lambda = grid_l, alpha = 1)
+
+
+# optim lambda using cross-validation
+# ---------------
+mdls$ridge$cv = cv.glmnet(x = X, y = Y, lambda = grid_r, alpha = 0, nfolds = 10)
+mdls$lasso$cv = cv.glmnet(x = X, y = Y, lambda = grid_l, alpha = 1, nfolds = 10)
+
+mdls$ridge$lambda = mdls$ridge$cv$lambda.min
+mdls$lasso$lambda = mdls$lasso$cv$lambda.min
+
+# error
+# ---------------
+mdls$ridge$train_error = sqrt(mean((predict(mdls$ridge$fit, s = mdls$ridge$lambda, newx = X) - Y)^2))
+mdls$lasso$train_error = sqrt(mean((predict(mdls$lasso$fit, s = mdls$lasso$lambda, newx = X) - Y)^2))
+
+# predict
+# ---------------
+mdls$ridge$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$ridge$fit, s = mdls$ridge$lambda, newx = Z) %>% as.vector())
+mdls$lasso$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$lasso$fit, s = mdls$lasso$lambda, newx = Z) %>% as.vector())
+
+# plot
+# ---------------
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+plot(mdls$ridge$fit, xvar = "lambda", label = TRUE, main = "Ridge Regression")
+plot(mdls$lasso$fit, xvar = "lambda", label = TRUE, main = "Lasso Regression")
+plot(mdls$ridge$cv)
+plot(mdls$lasso$cv)
+
+```
+
+#### Prediction
+
+We now predict using the **test** data and submit it to Kaggle for validation.
+
+```{r predict, warning=FALSE, message=FALSE}
+write_csv(mdls$ridge$pred, 'data/ridge.csv')
+write_csv(mdls$lasso$pred, 'data/lasso.csv')
+mdls$ridge$test_error = 0.13387
+mdls$lasso$test_error = 0.13308
+
+results = data.frame(
+  TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
+  TestError = lapply(mdls, '[[', 'test_error') %>% unlist() %>% round(., 3))
+print (results)
+```
+
+## RandomForest
+
+*  Find the best value for **mtry**
+*  Fit the model using best **mtry**
+*  Variable importance
+*  Refit using only the best variable and assess performance
+*  Predict and submit to Kaggle
+
+```{r randomforest, warning=FALSE, message=FALSE}
+require(randomForest)
+
+optim = FALSE
+if(optim){
+  grid = seq(20,50,5)
+  oob.err = numeric(length(grid))
+  for (idx in 1:length(grid)) {
+    mtry = grid[idx]
+    fit = randomForest(SalePriceLog ~ ., data = train, mtry = mtry)
+    oob.err[idx] = fit$mse[500]
+    cat("We're performing iteration", mtry, "\n")
+  }
+  
+  #Visualizing the OOB error.
+  plot(grid, oob.err, pch = 16, type = "b",
+       xlab = "Variables Considered at Each Split",
+       ylab = "OOB Mean Squared Error",
+       main = "Random Forest OOB Error Rates\nby # of Variables")
+  
+  best_mtry = grid[which.min(oob.err)]
+} else {
+  best_mtry = 40
+}
+
+#Fitting an initial random forest to the training subset.
+set.seed(0)
+mdls$rf$best_mtry = best_mtry  
+mdls$rf$formula = formula(SalePriceLog ~ .)
+mdls$rf$fit = randomForest(mdls$rf$formula, data = train, importance = TRUE, mtry = mdls$rf$best_mtry)
+mdls$rf$train_error = sqrt(mean((train$SalePriceLog - predict(mdls$rf$fit, train))^2))
+
+# Predict
+mdls$rf$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$rf$fit, test))
+```
+
+```{r importance, warning=FALSE, message=FALSE}
+varImp = importance(mdls$rf$fit) %>% as.data.frame()
+varImp[order(-varImp$`%IncMSE`), ]
+varImpPlot(mdls$rf$fit)
+```
+Use only top n variables where %IncMSE > 10
+```{r}
+rf_vars = rownames(varImp[varImp$`%IncMSE` > 10,])
+mdls$rf_reduced$formula = paste('SalePriceLog ~ ', paste(rf_vars, collapse = ' + ')) %>% as.formula(.)
+mdls$rf_reduced$fit = randomForest(mdls$rf_reduced$formula, data = train, importance = TRUE)
+mdls$rf_reduced$train_error = sqrt(mean((train$SalePriceLog - predict(mdls$rf_reduced$fit, train))^2))
+
+# Predict
+mdls$rf_reduced$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$rf_reduced$fit, test))
+
+
+
+```
+
+### Prediction
+```{r predict, warning=FALSE, message=FALSE}
+write_csv(mdls$rf$pred, 'data/rf.csv')
+write_csv(mdls$rf_reduced$pred, 'data/rf_reduced.csv')
+mdls$rf$test_error = 0.14355
+mdls$rf_reduced$test_error = 0.14551
+
+results = data.frame(
+  TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
+  TestError = lapply(mdls, '[[', 'test_error') %>% unlist() %>% round(., 3))
+print (results)
+```
