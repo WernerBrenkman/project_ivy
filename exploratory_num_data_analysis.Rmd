@@ -1,5 +1,5 @@
 ---
-title: "project ivy: House Prices (Kaggle) - EDA"
+title: "project ivy: House Prices (Kaggle) - EDA (Numerical)"
 output: github_document
 ---
 
