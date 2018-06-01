@@ -1,4 +1,4 @@
-project ivy: House Prices (Kaggle) - EDA
+project ivy: House Prices (Kaggle) - EDA (Numerical)
 ================
 
 Overview
@@ -101,7 +101,7 @@ During the iterative process of modelling we have engineered a few features. Som
 -   **cred\_bubble** = as.factor(ifelse(**YrSold** &lt; 2008, '1', '2'))
 -   **PC1**: This is the first principal component as a result of performing PCA on all numeric/integer variables. We isolated all principal components where the correlation with **SalePriceLog** is &gt;.75 and added these are feature variables.
 
-As stated earlier there are two clusters of points that can be identified when looking at the scatterplots for **rat\_Lot\_1stFlr** & **rat\_garag\_land**. It is also interesting to note the strong linear relationship betwee **PC1** and **SalePrice**
+As stated earlier there are two clusters of points that can be identified when looking at the scatterplots for **rat\_Lot\_1stFlr** & **rat\_garag\_land**. It is also interesting to note the strong linear relationship between **PC1** and **SalePrice**
 
 ![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-6-1.png)
 
@@ -111,7 +111,7 @@ As stated earlier there are two clusters of points that can be identified when l
 
 It would make sense that bigger houses are more expensive. As a first go at clustering this data set we take area related variables and assess the impact of area on **SalePrice**. Because we know that there are multiple outliers in the data we will use the k-medoids algorithm rather than k-means.
 
-    ## [1] "Hopkins statistic: 0.911098"
+    ## [1] "Hopkins statistic: 0.928097"
 
 ![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-9-1.png) The Hopkins statistic suggest that the data is highly clusterable. Visual inspection is less positive with Spearman showing the most promise.
 
@@ -140,62 +140,62 @@ To validate the clusters we use a silhouette plot. The silhouette plot displays 
     ## # A tibble: 2 x 3
     ##   cl2        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     187245. 84269.
-    ## 2 2     175847. 75014.
+    ## 1 1     203199. 86973.
+    ## 2 2     163870. 68472.
 
     ## # A tibble: 3 x 3
     ##   cl3        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     190654. 77673.
-    ## 2 2     136276. 38718.
-    ## 3 3     230613. 90701.
+    ## 1 1     195064. 80283.
+    ## 2 2     130695. 32414.
+    ## 3 3     231606. 84890.
 
     ## # A tibble: 4 x 3
     ##   cl4        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     202615. 74617.
-    ## 2 2     148644. 41797.
-    ## 3 3     239326. 89333.
-    ## 4 4     128497. 50210.
+    ## 1 1     202280. 83230.
+    ## 2 2     135484. 30498.
+    ## 3 3     246743. 80507.
+    ## 4 4     133105. 40999.
 
 Even though **k**=2 looks like the best cluster to use, it unfortunately does not add any value in terms of discriminating **SalePriceLog** as can be seen by the density plots of **SalePriceLog** grouped by clusters. Maybe we should try hierarchical clustering?
 
     ## $centroid
-    ## [1] 0.6095305
+    ## [1] 0.7105051
     ## 
     ## $ward.D2
-    ## [1] 0.5559533
+    ## [1] 0.6861892
     ## 
     ## $single
-    ## [1] 0.06430322
+    ## [1] 0.06590097
     ## 
     ## $average
-    ## [1] 0.6375944
+    ## [1] 0.7234951
     ## 
     ## $complete
-    ## [1] 0.4967888
+    ## [1] 0.5711336
 
 The correlation coefficient shows that using the average method gave the closest fit to the original data. ![](exploratory_num_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-18-1.png)
 
-    ## # A tibble: 3 x 3
+    ## # A tibble: 2 x 3
     ##   cl2        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     186352. 82045.
-    ## 2 2     218989. 79010.
-    ## 3 3     137206. 49421.
+    ## 1 1     197220. 85051.
+    ## 2 2     169710. 73317.
 
     ## # A tibble: 3 x 3
     ##   cl3        mu     sd
     ##   <fct>   <dbl>  <dbl>
-    ## 1 1     186352. 82045.
-    ## 2 2     218989. 79010.
-    ## 3 3     137206. 49421.
+    ## 1 1     197220. 85051.
+    ## 2 2     222115. 77314.
+    ## 3 3     130723. 36990.
 
-    ## # A tibble: 3 x 3
-    ##   cl4        mu     sd
-    ##   <fct>   <dbl>  <dbl>
-    ## 1 1     186352. 82045.
-    ## 2 2     218989. 79010.
-    ## 3 3     137206. 49421.
+    ## # A tibble: 4 x 3
+    ##   cl4        mu      sd
+    ##   <fct>   <dbl>   <dbl>
+    ## 1 1     196138.  82378.
+    ## 2 2     222115.  77314.
+    ## 3 3     130723.  36990.
+    ## 4 4     288139. 206072.
 
 Again, hierarchical cluster also doesn't assist in discriminating **SalePriceLog**.

@@ -158,11 +158,11 @@ source('src/pca.R')
 *  **cred_bubble** = as.factor(ifelse(**YrSold** < 2008, '1', '2'))
 *  **PC1**: This is the first principal component as a result of performing PCA on all numeric/integer variables. We isolated all principal components where the correlation with **SalePriceLog** is >.75 and added these are feature variables.
 
-As stated earlier there are two clusters of points that can be identified when looking at the scatterplots for **rat_Lot_1stFlr** & **rat_garag_land**. It is also interesting to note the strong linear relationship betwee **PC1** and **SalePrice**
+As stated earlier there are two clusters of points that can be identified when looking at the scatterplots for **rat_Lot_1stFlr** & **rat_garag_land**. It is also interesting to note the strong linear relationship between **PC1** and **SalePrice**
 
 ```{r, fig.width=10, fig.asp=.75, echo=FALSE, warning=FALSE, message=FALSE}
 p = ggplot(filter(df, set_id == '1')) + theme_bw()
-plotlist = lapply(c('NeighborhoodClass', 'LotArea', 'rat_Lot_1stFlr', 'rat_garag_land', 'rat_1stFlr_GrLiv', 'PC1'), function(x){draw_corplot(x)})
+plotlist = lapply(c('NeighPrice', 'LotArea', 'rat_Lot_1stFlr', 'rat_garag_land', 'rat_1stFlr_GrLiv', 'PC1'), function(x){draw_corplot(x)})
 multiplot(cols = 3, plotlist = plotlist)
 ```
 
@@ -352,7 +352,7 @@ print(hc_cor)
 ```
 The correlation coefficient shows that using the average method gave the closest fit to the original data.
 ```{r, fig.width=10, fig.asp=.25, echo=FALSE, warning=FALSE, message=FALSE}
-hc_grps = lapply(2:4, function(x){cutree(hc$average, k=3)})
+hc_grps = lapply(2:4, function(x){cutree(hc$average, k=x)})
 
 hc_tst = data.frame(SalePriceLog=train[['SalePrice']],
                  NeighborhoodClass=train[['Neighborhood']],

@@ -20,7 +20,7 @@ source('src/transform.R')
 Now that we've had a look at the data, and dived into the numerical analysis. Let's take a deeper look into some of the categorical features. 
 
 ## Categorical variables
-The transformation of the categorical varibles are enclosed in the **transform.R source** code.
+The transformation of the categorical variables are enclosed in the **transform.R source** code.
 All Quality variables which had the same ordered levels that ranked the quality of the feature from None to Excellent were label encoded (maped to an integer representation) that reflected the order of the level. 0 = None, incrementally until 5 = Excellent. 
 Additionally, there were varaibles that, by nature & definition, were ordered. These variables were also label encoded.
 
@@ -31,7 +31,7 @@ The Utilities variable, as we'll see displayed all house, except one, having all
 table(df$Utilities)
 ```
 
-## Visualization of Categorical Varibles (Boxplot)
+## Visualization of Categorical Variables (Boxplot)
 Let's visualize the boxplot of the categorical variables.
 ```{r, fig.width= 14, fig.asp=1, echo=FALSE}
 df = df %>%
@@ -70,11 +70,11 @@ Highly correlated by definition, results in the following 'grouped' variables:
 *Nature of Sale: SaleType, SaleCondition
 
 ## Correlation of Label Encoded Features
-Once varaiables had been label encoded, we could develop a Correlation Matrix to display the relationship between these variables.
+Once variables had been label encoded, we could develop a Correlation Matrix to display the relationship between these variables.
 
 ```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
 # Categorical varibles to consider for Correlation
-library(corrplot)
+# library(corrplot)
 library(GGally)
 colSums(is.na(df))
 
@@ -103,22 +103,28 @@ Let's visualize these relationships:
 ```{r, echo = FALSE, warning = FALSE}
 C1 = ggplot(train1, aes(x = train1$ExterQual, y = train1$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE) + 
-      labs(x = 'ExterQual', y = 'SalePriceLog')
+      labs(x = 'ExterQual', y = 'SalePriceLog') + 
+  theme_bw()
 C2 = ggplot(train1, aes(x = train1$KitchenQual, y = train1$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE) + 
-      labs(x = 'KitchenQual', y = 'SalePriceLog')
+      labs(x = 'KitchenQual', y = 'SalePriceLog') + 
+  theme_bw()
 C3 = ggplot(train1, aes(x = train1$GarageFinish, y = train1$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE) + 
-      labs(x = 'GarageFinish', y = 'SalePriceLog')
+      labs(x = 'GarageFinish', y = 'SalePriceLog') + 
+  theme_bw()
 C4 = ggplot(train1, aes(x = train1$BsmtQual, y = train1$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE) + 
-      labs(x = 'BsmtQual', y = 'SalePriceLog')
+      labs(x = 'BsmtQual', y = 'SalePriceLog') + 
+  theme_bw()
 C5 = ggplot(train1, aes(x = train1$FireplaceQu, y = train1$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE) + 
-      labs(x = 'FireplaceQual', y = 'SalePriceLog')
+      labs(x = 'FireplaceQual', y = 'SalePriceLog') + 
+  theme_bw()
 C6 = ggplot(train1, aes(x = train1$HeatingQC, y = train1$SalePriceLog)) + geom_point() + 
       geom_smooth(method=lm , color="red", se=FALSE) + 
-      labs(x = 'HeatingQC', y = 'SalePriceLog')
+      labs(x = 'HeatingQC', y = 'SalePriceLog') + 
+  theme_bw()
 
 library(gridExtra)
 grid.arrange(C1, C2, C3, C4, C5, C6, top = 'Relationships between Categorical features and SalePriceLog')
@@ -136,7 +142,7 @@ require(GoodmanKruskal)
 GKtau(df$BsmtQual, df$KitchenQual)
 
 ```
-From the above table, we can see that there is an equal predictive relationship between these to features. But seems to hint that knowledge of the BsmtQual is predictive (more so) of the KitchenQual - however, not significantly enough to throw away either.  
+From the above table, we can see that there is an equal predictive relationship between these two features. But seems to hint that knowledge of the BsmtQual is predictive (more so) of the KitchenQual - however, not significantly enough to throw away either.  
 
 ```{r, echo = FALSE, warning = FALSE}
 require(GoodmanKruskal)
@@ -150,7 +156,7 @@ GKtau(df$ExterQual, df$GarageFinish)
 A surprising relationship is that of ExterQual to KitchenQual. 
 
 ## Feature Importance: Random Forest
-Let's look at a Random Forest model that will highlight the importnat features taht form part of our dataset, and potentially inform our prediction models. 
+Let's look at a Random Forest model that will highlight the important features that form part of our dataset, and potentially inform our prediction models. 
 
 ```{r, echo = FALSE, warning = FALSE}
 library(randomForest)
@@ -195,11 +201,14 @@ From the above we can see that knowledge of Neighborhood is predictive of MSSubC
 One of the features I'm particularly interested in is the Neighborhood. From intuition, I know that neighborhood plays a pretty important role when someone is considering buying a house. More favourable Neighborhoods are likely to have higher SalePrices. Conversely, more popular neighborhoods could also mean cheaper SalesPrices. 
 
 ```{r, echo = FALSE, warning = FALSE}
-N1 = ggplot(train1, aes(x = Neighborhood)) + geom_histogram(stat = 'count') +
-       theme(axis.text.x = element_text(angle = 90, hjust =1)) +
-       ggtitle('Count of Houses in Neighborhood')
+N1 = ggplot(train1, aes(x = Neighborhood)) + 
+  geom_histogram(stat = 'count') +
+  theme(axis.text.x = element_text(angle = 90, hjust =1)) +
+  ggtitle('Count of Houses in Neighborhood') + 
+  theme_bw()
 N1
 ```
+
 From the above graph, we can see that NAmes and CollgCr are the most 'popular' neighborhoods (higher count). NAmes seems to have some variance that can't be ignored. Popularity could be dependant on many things, firstly it could be the price. Ie. Houses which are more affordable are more popular, additionally it could be based on the actual area of the neighborhood. 
 
 Let's sort the neighborhood by highest median price. Reason to use median is to be less influenced by outliers of which there appear to be many in Neighborhood. In doing so, we hope to uncover some binning opportunities due to the fact that there are so many levels in Neighborhood. 
@@ -214,7 +223,8 @@ N2 = ggplot(train1, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y = Sa
       theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
       scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
       geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2) + 
-      ggtitle('Median SalesPrice of Houses in Neighborhood')
+      ggtitle('Median SalesPrice of Houses in Neighborhood') + 
+  theme_bw()
 
 N2
 ```
@@ -234,9 +244,11 @@ Let's explore MSSubClass to determine if we unlock anything interesting.
 ```{r, echo= FALSE, warning = FALSE}
 M1 = ggplot(train1, aes(x = MSSubClass)) + geom_histogram(stat = 'count') +
        theme(axis.text.x = element_text(angle = 90, hjust =1)) + 
-  ggtitle('Count of MSSubClass')
+  ggtitle('Count of MSSubClass') + 
+  theme_bw()
 M1
 ```
+
 Comparing to Mean Price
 
 ```{r, echo = FALSE, warning = FALSE}
@@ -249,10 +261,12 @@ N2 = ggplot(train1, aes(x=reorder(MSSubClass, SalePrice, FUN = mean), y = SalePr
       theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
       scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
       geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2) + 
-      ggtitle('Mean SalePrice per MSSubClass')
+      ggtitle('Mean SalePrice per MSSubClass') + 
+  theme_bw()
 
 N2
 ```
+
 Similarily, let's bin MSSubClass.
 
 Top MSSubClasses = 

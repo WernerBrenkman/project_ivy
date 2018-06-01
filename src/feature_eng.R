@@ -34,8 +34,7 @@ df = df %>%
          rat_Lot_1stFlr = x_1stFlrSF/total_area,
          rat_garag_land = GarageArea/total_area,
          cred_bubble = as.factor(ifelse(YrSold < 2008, '1', '2')),
-         rat_1stFlr_GrLiv = log10(x_1stFlrSF*GrLivArea),
-         NeighborhoodClass = as.integer(NeighborhoodClass)
+         rat_1stFlr_GrLiv = log10(x_1stFlrSF*GrLivArea)
          )
 
 # split into test and train again
