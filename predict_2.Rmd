@@ -31,33 +31,56 @@ f_print_results = function(){
 # Multiple linear regression
 
 *  Fit saturated model to get a benchmark
+*  Fit intuitive model
 *  Variable selection using step procedure
 *  Diagnostics
 *  Predict and submit to Kaggle
 
 #### Saturated model
 
+To start we are going to fit a model with all available variables. This model will serve as the benchmark.
+
 ```{r saturated, warning=FALSE, message=FALSE}
 # models list object
-mdls = list(saturated = list(), step = list())
+mdls = list(saturated = list(), intuition = list(), step = list())
 
 # fit saturated model
 mdls$saturated$formula = formula(SalePriceLog ~ .)
 mdls$saturated$fit = lm(mdls$saturated$formula, data = train)
 mdls$saturated$train_error = sqrt(mean(mdls$saturated$fit$residuals^2))
 
-# diagnostic plots 
-layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
-plot(mdls$saturated$fit)
-
 # predictions
 mdls$saturated$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$saturated$fit, test))
 
+
+# diagnostic plots 
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+plot(mdls$saturated$fit)
 anova(mdls$saturated$fit)
 
 ```
-There are too many variables in this model to plot here instead we plot the results of the anova test. We have a look at the diagnostic plots instead and note that the Adj. R-Squared value for this model is **0.9326**.
+There are too many variables in this model to plot here instead we plot the results of the anova test. We have a look at the diagnostic plots, anova results and note that the Adj. R-Squared value for this model is **`r summary(mdls$saturated$fit)$adj.r.squared`**.
 
+#### Intuitive model
+
+The **intuitive** model is built on variables that seems to make intuitive sense.
+
+```{r intuition, warning=FALSE, message=FALSE}
+# fit intuition model
+mdls$intuition$formula = formula(SalePriceLog ~ TotalBsmtSF + NeighPrice + OverallQual + OverallCond + YearBuilt + GrLivArea + BsmtQual + KitchenQual + HeatingQC + FireplaceQu + GarageArea + CentralAir + LotArea + LotShape + BsmtFinSF1 + x_1stFlrSF)
+mdls$intuition$fit = lm(mdls$intuition$formula, data = train)
+mdls$intuition$train_error = sqrt(mean(mdls$intuition$fit$residuals^2))
+
+# predictions
+mdls$intuition$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$intuition$fit, test))
+
+# diagnostic plots 
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+plot(mdls$intuition$fit)
+anova(mdls$intuition$fit)
+
+```
+We have a look at the diagnostic plots and note that the Adj. R-Squared value for this model is **`r summary(mdls$intuition$fit)$adj.r.squared`**.
 
 #### Variable selection using stepwise procedure
 
@@ -80,7 +103,14 @@ mdls$step$train_error = sqrt(mean(mdls$step$fit$residuals^2))
 # predictions
 mdls$step$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$step$fit, test))
 
+# diagnostic plots 
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+plot(mdls$step$fit)
+anova(mdls$step$fit)
+
 ```
+
+The residual plot doesn't display any patterns like fanning, but the QQ-plot does indicate an element of non-normality. This indicates that the errors are not random and that the model does **not** fully explain all the variance.
 
 The stepwise model suggest using `r nrow(anova(mdls$step$fit))` of the original `r nrow(anova(mdls$saturated$fit))` variables. That is a reduction of `r nrow(anova(mdls$saturated$fit)) - nrow(anova(mdls$step$fit))`, but are we losing any information? Use anova test to assess the impact.
 
@@ -88,22 +118,16 @@ The stepwise model suggest using `r nrow(anova(mdls$step$fit))` of the original 
 # compare step vs saturated
 anova(mdls$step$fit, mdls$saturated$fit)
 ```
+
 The anova test indicates that we can remove these variables, without significant loss of information.
-```{r diag1, warning=FALSE, message=FALSE}
-# diagnostics
-summary(mdls$step$fit)
+The **step** model attained and Adj. R-Squared value of `r summary(mdls$step$fit)$adj.r.squared`, which is very high. It is also very similar to that of the **saturated** model. The summary indicates that there are multiple variables that are significant. What is worrying is that many of the levels in the various factor variables are not significant. Maybe additional feature engineering could be done to isolate significant levels. It is out of scope for this project.
+
+```{r compare1_2, warning=FALSE, message=FALSE} 
+# compare step vs intuition
+anova(mdls$step$fit, mdls$intuition$fit)
 ```
 
-The **step** model attained and Adj. R-Squared value of 0.933, which is very high. It is also very similar to that of the **saturated** model. The summary indicates that there are multiple variables that are significant. What is worrying is that many of the levels in the various factor variables are not significant. Maybe additional feature engineering could be done to isolate significant levels. It is out of scope for this project.
-
-```{r diag2, warning=FALSE, message=FALSE}
-# diagnostics
-layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
-plot(mdls$step$fit)
-```
-
-Residuals seem to be normally distributed for the most part. The residual plot doesn't display any patterns, but the QQ-plot does indicate that there are outliers in the data.
-
+It is interesting to note that there is a significant difference between the **step** & **intuition** models, but both still have an Adj. R-Squared value of greater than 0.8.
 
 ```{r diag3, warning=FALSE, message=FALSE}
 # diagnostics
@@ -119,6 +143,7 @@ VIF indicates that **PC1** and **rat_1stFlr_GrLiv** should be removed, but the v
 # compare step vs step_reduced
 mdls$step_reduced$formula = update.formula(mdls$step$formula, ~ . - x_1stFlrSF - rat_1stFlr_GrLiv)
 mdls$step_reduced$fit = lm(mdls$step_reduced$formula, data = train)
+mdls$step_reduced$train_error = sqrt(mean(mdls$step_reduced$fit$residuals^2))
 anova(mdls$step_reduced$fit, mdls$step$fit)
 
 
@@ -133,9 +158,12 @@ The anova test suggest that removal of **PC1** and **rat_1stFlr_GrLiv** leads to
 We now predict using the **test** data and submit it to Kaggle for validation. One can see that the **step** model achieved slightly better results than the **saturated** model although we have removed `r nrow(anova(mdls$saturated$fit)) - nrow(anova(mdls$step$fit))` variables.
 ```{r predict1, warning=FALSE, message=FALSE}
 write_csv(mdls$saturated$pred, 'data/saturated.csv')
+write_csv(mdls$intuition$pred, 'data/intuition.csv')
 write_csv(mdls$step$pred, 'data/step.csv')
-mdls$saturated$test_error = 0.13606
-mdls$step$test_error = 0.13171
+mdls$saturated$test_error = 0.13799
+mdls$step_reduced$test_error = 0.13766
+mdls$intuition$test_error = 0.13956
+mdls$step$test_error = 0.13308
 
 results = data.frame(
   TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
@@ -208,8 +236,8 @@ We now predict using the **test** data and submit it to Kaggle for validation. T
 ```{r predict2, warning=FALSE, message=FALSE}
 write_csv(mdls$ridge$pred, 'data/ridge.csv')
 write_csv(mdls$lasso$pred, 'data/lasso.csv')
-mdls$ridge$test_error = 0.13584
-mdls$lasso$test_error = 0.13194
+mdls$ridge$test_error = 0.13645
+mdls$lasso$test_error = 0.13399
 
 results = data.frame(
   TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
@@ -313,8 +341,8 @@ We now predict using the **test** data and submit it to Kaggle for validation. T
 ```{r predict3, warning=FALSE, message=FALSE}
 write_csv(mdls$rf$pred, 'data/rf.csv')
 write_csv(mdls$rf_reduced$pred, 'data/rf_reduced.csv')
-mdls$rf$test_error = 0.14355
-mdls$rf_reduced$test_error = 0.14551
+mdls$rf$test_error = 0.13729
+mdls$rf_reduced$test_error = 0.13489
 
 results = data.frame(
   TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
@@ -324,6 +352,9 @@ print (results)
 
 
 # Ensemble
+
+*An ensemble is a supervised learning technique for combining multiple weak learners/models to produce a strong learner.* Next we combine the results of the previous models and take the mean predicted value for each observation. This makes use of the law of large numbers that basically says that the consensus of the group is more accurate than the individual.
+
 ```{r ensebmle, warning=FALSE, message=FALSE}
 
 mdls$ensemble$pred = data.frame(Id = test$Id, 
@@ -336,7 +367,7 @@ mdls$ensemble$pred = data.frame(Id = test$Id,
   
 write_csv(mdls$ensemble$pred, 'data/ensemble.csv')
 mdls$ensemble$train_error = NA
-mdls$ensemble$test_error = 0.12907
+mdls$ensemble$test_error = 0.12888
 
 results = data.frame(
   TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
