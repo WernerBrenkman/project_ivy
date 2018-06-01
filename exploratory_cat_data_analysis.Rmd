@@ -1,0 +1,288 @@
+---
+title: "project ivy: House Prices (Kaggle) - EDA (Categorical)"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(knitr)
+
+source('src/ini.R')
+source('src/load.R')
+source('src/transform.R')
+# colSums(is.na(df))
+```
+
+## Overview
+
+[House Prices: Advanced Regression Techniques](https://www.kaggle.com/c/house-prices-advanced-regression-techniques)
+
+Now that we've had a look at the data, and dived into the numerical analysis. Let's take a deeper look into some of the categorical features. 
+
+## Categorical variables
+The transformation of the categorical varibles are enclosed in the **transform.R source** code.
+All Quality variables which had the same ordered levels that ranked the quality of the feature from None to Excellent were label encoded (maped to an integer representation) that reflected the order of the level. 0 = None, incrementally until 5 = Excellent. 
+Additionally, there were varaibles that, by nature & definition, were ordered. These variables were also label encoded.
+
+After considering the NA values in the dataset, we also came across a feature that was overwhlemingly populated by a single level.
+The Utilities variable, as we'll see displayed all house, except one, having all public utilities. Thus, this variable doesn't offer much enrichment for Preditcion & therefore removed.
+(Removed in feature_eng.R code).
+```{r, echo = FALSE}
+table(df$Utilities)
+```
+
+## Visualization of Categorical Varibles (Boxplot)
+Let's visualize the boxplot of the categorical variables.
+```{r, fig.width= 14, fig.asp=1, echo=FALSE}
+df = df %>%
+  mutate(SalePriceLog = ifelse(set_id == '1', log10(SalePrice), NA))
+
+train1 = filter(df, set_id == '1')
+
+p = ggplot(filter(df, set_id == '1')) + theme_bw()
+
+SP_mean = mean(train1$SalePriceLog)
+draw_boxplot = function(var){
+  p + geom_boxplot(aes_string(x = var, y = 'SalePriceLog')) + ggtitle(var) +
+    geom_hline(yintercept=SP_mean, linetype="dashed", color = "red") 
+}
+plotlist = lapply(train1, function(x){ifelse(class(x) %in% c('factor'), 1, NA)}) %>% unlist()
+plotlist = names(plotlist)[which(plotlist == 1)]
+plotlist = lapply(plotlist, function(x){draw_boxplot(x)})
+multiplot(cols = 5, plotlist = plotlist)
+```
+
+From the above graphs, there are definitely features that have similar shapes. However, there are also features that display significant variation and will be explored in more detail. 
+
+When reading **data_descr.txt** it is clear that some variables are highly correlated purely by definition. Let's explore those in detail and decide which to keep.
+
+Highly correlated by definition, results in the following 'grouped' variables:
+*Property Variables: Street, Alley, LotShape, LandContour, LandSlope, LotConfig
+*Dwelling/ Living Variables: BldgType, HouseStyle, MSSubClass, MSZoning, Neighborhood
+*Utility: Utilities, Electrical
+*Overall Quality & Condition: OverallQual, OverallCond, Functional
+*Material of House: OverallQual, RoofMatl, Exterior1st, Exterior2nd, MasVnrType, ExterQual, ExterCond, Foundation
+*Roof: RoofStyle, RoofMatl
+*Basement: BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2
+*Heating: Heating, HeatingQC, CentralAir, FireplaceQu
+*Garage: GarageType, GarageFinish, GarageQual, GarageCond, PavedDrive
+*Misc: PoolQC, Fence, MiscFeature, KitchenQual
+*Nature of Sale: SaleType, SaleCondition
+
+## Correlation of Label Encoded Features
+Once varaiables had been label encoded, we could develop a Correlation Matrix to display the relationship between these variables.
+
+```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
+# Categorical varibles to consider for Correlation
+library(corrplot)
+library(GGally)
+colSums(is.na(df))
+
+ord_fact = c('ExterQual', 'ExterCond', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2', 'HeatingQC',
+             'KitchenQual', 'FireplaceQu', 'GarageQual', 'GarageCond', 'PoolQC', 'Fence', 'LotShape', 'LandSlope', 
+             'CentralAir', 'Functional', 'GarageFinish', 'PavedDrive')
+
+train_cat = train1[ord_fact]
+train_cat$SalePriceLog = train1$SalePriceLog
+dim(train_cat)
+
+ggcorr(train_cat, nbreaks = 4, palette = "RdGy", label = TRUE, label_size = 3, label_color = "white")
+
+
+# cor_cat = cor(train_cat, method = 'kendall')
+# corrplot(cor_cat, method = 'circle', order="hclust")
+```
+
+From the above correlations, we can see a number of features which are strongly correlated to eachother. It seems to be a trend (intuitively) that the Quality and Condition of a feature show strong relationships. On top of that, we can see that BsmtQual had a strong relationship to KitchenQual, and ExterQual show significant relationships to BsmtQual, HeatingQC, KitchenQual, GarageFinish.
+We'll explore these relationships below.
+
+Additionally, we can see that the features that contribute to SalePrice significantly are:
+GarageFinsih, FireplaceQC, KitchenQual, BsmtQual, ExterQual, (HeatingQC)
+
+Let's visualize these relationships:
+```{r, echo = FALSE, warning = FALSE}
+C1 = ggplot(train1, aes(x = train1$ExterQual, y = train1$SalePriceLog)) + geom_point() + 
+      geom_smooth(method=lm , color="red", se=FALSE) + 
+      labs(x = 'ExterQual', y = 'SalePriceLog')
+C2 = ggplot(train1, aes(x = train1$KitchenQual, y = train1$SalePriceLog)) + geom_point() + 
+      geom_smooth(method=lm , color="red", se=FALSE) + 
+      labs(x = 'KitchenQual', y = 'SalePriceLog')
+C3 = ggplot(train1, aes(x = train1$GarageFinish, y = train1$SalePriceLog)) + geom_point() + 
+      geom_smooth(method=lm , color="red", se=FALSE) + 
+      labs(x = 'GarageFinish', y = 'SalePriceLog')
+C4 = ggplot(train1, aes(x = train1$BsmtQual, y = train1$SalePriceLog)) + geom_point() + 
+      geom_smooth(method=lm , color="red", se=FALSE) + 
+      labs(x = 'BsmtQual', y = 'SalePriceLog')
+C5 = ggplot(train1, aes(x = train1$FireplaceQu, y = train1$SalePriceLog)) + geom_point() + 
+      geom_smooth(method=lm , color="red", se=FALSE) + 
+      labs(x = 'FireplaceQual', y = 'SalePriceLog')
+C6 = ggplot(train1, aes(x = train1$HeatingQC, y = train1$SalePriceLog)) + geom_point() + 
+      geom_smooth(method=lm , color="red", se=FALSE) + 
+      labs(x = 'HeatingQC', y = 'SalePriceLog')
+
+library(gridExtra)
+grid.arrange(C1, C2, C3, C4, C5, C6, top = 'Relationships between Categorical features and SalePriceLog')
+```
+
+From the above graphs, we can see a very clear and strong postive linear relationship between the feature and SalesPrice. 
+
+## GoodmanKruskal Method
+To further explore the relationships between 2 categorical features, we will looks at the GoodmanKruskal tau values, which describe both the forward & backward association between these 2 variables. 
+[GoodmanKruskal Tau](https://cran.r-project.org/web/packages/GoodmanKruskal/vignettes/GoodmanKruskal.html)
+
+```{r, echo = FALSE, warning = FALSE}
+require(GoodmanKruskal)
+
+GKtau(df$BsmtQual, df$KitchenQual)
+
+```
+From the above table, we can see that there is an equal predictive relationship between these to features. But seems to hint that knowledge of the BsmtQual is predictive (more so) of the KitchenQual - however, not significantly enough to throw away either.  
+
+```{r, echo = FALSE, warning = FALSE}
+require(GoodmanKruskal)
+
+GKtau(df$ExterQual, df$BsmtQual)
+GKtau(df$ExterQual, df$HeatingQC)
+GKtau(df$ExterQual, df$KitchenQual)
+GKtau(df$ExterQual, df$GarageFinish)
+
+```
+A surprising relationship is that of ExterQual to KitchenQual. 
+
+## Feature Importance: Random Forest
+Let's look at a Random Forest model that will highlight the importnat features taht form part of our dataset, and potentially inform our prediction models. 
+
+```{r, echo = FALSE, warning = FALSE}
+library(randomForest)
+
+a = filter(df, set_id == '1')
+a <- a[, colSums(is.na(a)) == 0]
+a = a %>% mutate_if(is.character, as.factor)
+
+
+fit = randomForest(SalePriceLog ~ . -SalePrice
+                   ,
+                   data = a, 
+                   importance = TRUE,
+                   tree = 100
+                  # na.action=na.omit
+                   )
+
+forest = varImpPlot(fit, n.var = min(20, nrow(fit$importance)))
+forest
+```
+
+## Considering non-ordinal categorical features
+From the list of of non-ordinal features, there are a couple that stand out and are worth exploring.
+(It's more art than science). Additionally, the 2 non-ordered categorical features highlighted from the RandomForest model that scored the highest value of importance were Neighborhood and MSSubClass - let's take a closer look. 
+
+```{r, echo = FALSE, warning=FALSE}
+source('src/feature_eng.R')
+```
+
+```{r, echo=FALSE, warning = FALSE}
+GKtau(df$Neighborhood, df$MSSubClass)
+GKtau(df$Neighborhood, df$MSZoning)
+
+# GK_matrix = GKtauDataframe(cat_train)
+# plot(GK_matrix, diagSize = 5)
+
+```
+
+From the above we can see that knowledge of Neighborhood is predictive of MSSubClass, and signifanctly more of MSZoning.
+
+## Neighborhood
+One of the features I'm particularly interested in is the Neighborhood. From intuition, I know that neighborhood plays a pretty important role when someone is considering buying a house. More favourable Neighborhoods are likely to have higher SalePrices. Conversely, more popular neighborhoods could also mean cheaper SalesPrices. 
+
+```{r, echo = FALSE, warning = FALSE}
+N1 = ggplot(train1, aes(x = Neighborhood)) + geom_histogram(stat = 'count') +
+       theme(axis.text.x = element_text(angle = 90, hjust =1)) +
+       ggtitle('Count of Houses in Neighborhood')
+N1
+```
+From the above graph, we can see that NAmes and CollgCr are the most 'popular' neighborhoods (higher count). NAmes seems to have some variance that can't be ignored. Popularity could be dependant on many things, firstly it could be the price. Ie. Houses which are more affordable are more popular, additionally it could be based on the actual area of the neighborhood. 
+
+Let's sort the neighborhood by highest median price. Reason to use median is to be less influenced by outliers of which there appear to be many in Neighborhood. In doing so, we hope to uncover some binning opportunities due to the fact that there are so many levels in Neighborhood. 
+
+```{r, echo= FALSE, warning = FALSE}
+SP_m = median(train1$SalePrice)
+
+N2 = ggplot(train1, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y = SalePrice)) +
+      geom_bar(stat = 'summary', fun.y = 'median') +
+      labs(x = 'Neighborhood', y = 'Median Sales Price') + 
+      geom_hline(yintercept=SP_m, linetype="dashed", color = "red")  + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+      scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
+      geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2) + 
+      ggtitle('Median SalesPrice of Houses in Neighborhood')
+
+N2
+```
+
+From the above graph, we can see that we could explore potential binning of neighborhood. 
+We've binned Neighborhood into 5 respective buckets, based on the median SalesPrice - see the results of the feature below.
+
+```{r, echo = FALSE, warning = FALSE}
+
+table(df$NeighPrice)
+# Fix here
+```
+
+## MSSubClass
+Let's explore MSSubClass to determine if we unlock anything interesting.
+
+```{r, echo= FALSE, warning = FALSE}
+M1 = ggplot(train1, aes(x = MSSubClass)) + geom_histogram(stat = 'count') +
+       theme(axis.text.x = element_text(angle = 90, hjust =1)) + 
+  ggtitle('Count of MSSubClass')
+M1
+```
+Comparing to Mean Price
+
+```{r, echo = FALSE, warning = FALSE}
+SP_mean = mean(train1$SalePrice)
+
+N2 = ggplot(train1, aes(x=reorder(MSSubClass, SalePrice, FUN = mean), y = SalePrice)) +
+      geom_bar(stat = 'summary', fun.y = 'mean') +
+      labs(x = 'MSSubClass', y = 'Mean Sales Price') + 
+      geom_hline(yintercept=SP_mean, linetype="dashed", color = "red")  + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+      scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
+      geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=2) + 
+      ggtitle('Mean SalePrice per MSSubClass')
+
+N2
+```
+Similarily, let's bin MSSubClass.
+
+Top MSSubClasses = 
+2-STORY 1946 & NEWER
+1-STORY PUD (Planned Unit Development) - 1946 & NEWER
+2-1/2 STORY ALL AGES
+1-STORY 1946 & NEWER ALL STYLES
+
+Average MSSubClasses = 
+SPLIT OR MULTI-LEVEL
+2-STORY 1945 & OLDER
+1-STORY W/FINISHED ATTIC ALL AGES
+SPLIT FOYER
+1-1/2 STORY FINISHED ALL AGES
+2-STORY PUD - 1946 & NEWER
+DUPLEX - ALL STYLES AND AGES
+2 FAMILY CONVERSION - ALL STYLES AND AGES
+
+Bottom MSSubClasses = 
+1-1/2 STORY - UNFINISHED ALL AGES
+PUD - MULTILEVEL - INCL SPLIT LEV/FOYER
+1-STORY 1945 & OLDER
+
+```{r, echo = FALSE, warning = FALSE}
+# df$MSSubClassPrice[df$MSSubClass %in% c('60', '120', '75', '20')] = 2
+# df$MSSubClassPrice[!df$MSSubClass %in% c('30', '180', '45', '60','120', '75', '20' )] = 1
+# df$MSSubClassPrice[df$MSSubClass %in% c('30', '180', '45')] = 0
+
+table(df$MSSubClassPrice)
+```
+
+
+
