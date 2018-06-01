@@ -22,12 +22,13 @@ rm(x, labels, breaks)
 # transforms
 # =========================================
 df = df %>%
-  mutate(LotArea = log10(LotArea),
+  mutate(total_area = x_1stFlrSF + x_2ndFlrSF + TotalBsmtSF,
          SalePriceLog = ifelse(set_id == '1', log10(SalePrice), NA),
-         rat_Lot_1stFlr = x_1stFlrSF/LotArea,
-         rat_garag_land = GarageArea/LotArea,
+         rat_Lot_1stFlr = x_1stFlrSF/total_area,
+         rat_garag_land = GarageArea/total_area,
          cred_bubble = as.factor(ifelse(YrSold < 2008, '1', '2')),
-         rat_1stFlr_GrLiv = log10(x_1stFlrSF*GrLivArea)
+         rat_1stFlr_GrLiv = log10(x_1stFlrSF*GrLivArea),
+         NeighborhoodClass = as.integer(NeighborhoodClass)
          )
 
 # split into test and train again

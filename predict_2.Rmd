@@ -9,7 +9,7 @@ source('app.R')
 
 
 # remove redundant vars
-redunant_vars = c('set_id', 'Id', 'SalePrice', 'SaleCondition', 'SaleType', 'MSSubClass')
+redunant_vars = c('set_id', 'Id', 'SalePrice', 'SaleCondition', 'SaleType', 'MSSubClass', 'Neighborhood')
 train[, redunant_vars] = NULL
 test[, redunant_vars[-2]] = NULL
 df[, redunant_vars] = NULL
@@ -117,9 +117,13 @@ VIF indicates that **PC1** and **rat_1stFlr_GrLiv** should be removed, but the v
 
 ```{r compare2, warning=FALSE, message=FALSE}
 # compare step vs step_reduced
-mdls$step_reduced$formula = update.formula(mdls$step$formula, ~ . - PC1 - rat_1stFlr_GrLiv)
+mdls$step_reduced$formula = update.formula(mdls$step$formula, ~ . - x_1stFlrSF - rat_1stFlr_GrLiv)
 mdls$step_reduced$fit = lm(mdls$step_reduced$formula, data = train)
 anova(mdls$step_reduced$fit, mdls$step$fit)
+
+
+mdls$step_reduced$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$step_reduced$fit, test))
+write_csv(mdls$step_reduced$pred, 'data/step_reduced.csv')
 
 ```
 The anova test suggest that removal of **PC1** and **rat_1stFlr_GrLiv** leads to a significant different output, hence we should not remove these variables.
@@ -300,8 +304,6 @@ mdls$rf_reduced$train_error = sqrt(mean((train$SalePriceLog - predict(mdls$rf_re
 # Predict
 mdls$rf_reduced$pred = data.frame(Id = test$Id, SalePrice = 10^predict(mdls$rf_reduced$fit, test))
 
-
-
 ```
 
 ### Prediction
@@ -319,3 +321,26 @@ results = data.frame(
   TestError = lapply(mdls, '[[', 'test_error') %>% unlist() %>% round(., 3))
 print (results)
 ```
+
+
+# Ensemble
+```{r ensebmle, warning=FALSE, message=FALSE}
+
+mdls$ensemble$pred = data.frame(Id = test$Id, 
+                                SalePrice = .2*mdls$step$pred$SalePrice + 
+                                  .2*mdls$ridge$pred$SalePrice + 
+                                  .2*mdls$lasso$pred$SalePrice + 
+                                  .2*mdls$rf$pred$SalePrice + 
+                                  .2*mdls$rf_reduced$pred$SalePrice
+                                  )
+  
+write_csv(mdls$ensemble$pred, 'data/ensemble.csv')
+mdls$ensemble$train_error = NA
+mdls$ensemble$test_error = 0.12907
+
+results = data.frame(
+  TrainError = lapply(mdls, '[[', 'train_error') %>% unlist() %>% round(., 3),
+  TestError = lapply(mdls, '[[', 'test_error') %>% unlist() %>% round(., 3))
+print (results)
+```
+
