@@ -166,7 +166,7 @@ plotlist = lapply(c('NeighPrice', 'LotArea', 'rat_Lot_1stFlr', 'rat_garag_land',
 multiplot(cols = 3, plotlist = plotlist)
 ```
 
-```{r, fig.width=10, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, fig.width=14, fig.asp=1, echo=FALSE, warning=FALSE, message=FALSE}
 var_names = lapply(filter(df, set_id == '1'), function(x){ifelse(class(x) %in% c('integer', 'numeric'), 1, NA)}) %>% unlist()
 var_names = names(var_names)[which(var_names == 1)]
 var_names = var_names[var_names != 'Id']

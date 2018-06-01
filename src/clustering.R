@@ -12,7 +12,10 @@ area_vars = c('LotFrontage',
               'OverallQual',
               'x_1stFlrSF',
               'x_2ndFlrSF',
-              'PoolArea'
+              'PoolArea',
+              'rat_Lot_1stFlr',
+              'rat_garag_land',
+              'OverallQual'
               )
 
 df_area = scale(df[, area_vars]) %>%
@@ -28,7 +31,7 @@ d_prsn = get_dist(df_area, method = 'spearman')
 
 # k-mediods using pam. Also less sensitive to outliers
 # =========================================
-pam = pam(x = d_prsn, diss = TRUE, k=2)
+pam = pam(x = d_prsn, diss = TRUE, k=3)
 clusters = data.frame(Id = df[['Id']], area_cl = as.factor(pam[['clustering']]))
 
 

@@ -57,17 +57,18 @@ From the above graphs, there are definitely features that have similar shapes. H
 When reading **data_descr.txt** it is clear that some variables are highly correlated purely by definition. Let's explore those in detail and decide which to keep.
 
 Highly correlated by definition, results in the following 'grouped' variables:
-*Property Variables: Street, Alley, LotShape, LandContour, LandSlope, LotConfig
-*Dwelling/ Living Variables: BldgType, HouseStyle, MSSubClass, MSZoning, Neighborhood
-*Utility: Utilities, Electrical
-*Overall Quality & Condition: OverallQual, OverallCond, Functional
-*Material of House: OverallQual, RoofMatl, Exterior1st, Exterior2nd, MasVnrType, ExterQual, ExterCond, Foundation
-*Roof: RoofStyle, RoofMatl
-*Basement: BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2
-*Heating: Heating, HeatingQC, CentralAir, FireplaceQu
-*Garage: GarageType, GarageFinish, GarageQual, GarageCond, PavedDrive
-*Misc: PoolQC, Fence, MiscFeature, KitchenQual
-*Nature of Sale: SaleType, SaleCondition
+
+*  Property Variables: Street, Alley, LotShape, LandContour, LandSlope, LotConfig
+*  Dwelling/ Living Variables: BldgType, HouseStyle, MSSubClass, MSZoning, Neighborhood
+*  Utility: Utilities, Electrical
+*  Overall Quality & Condition: OverallQual, OverallCond, Functional
+*  Material of House: OverallQual, RoofMatl, Exterior1st, Exterior2nd, MasVnrType, ExterQual, ExterCond, Foundation
+*  Roof: RoofStyle, RoofMatl
+*  Basement: BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2
+*  Heating: Heating, HeatingQC, CentralAir, FireplaceQu
+*  Garage: GarageType, GarageFinish, GarageQual, GarageCond, PavedDrive
+*  Misc: PoolQC, Fence, MiscFeature, KitchenQual
+*  Nature of Sale: SaleType, SaleCondition
 
 ## Correlation of Label Encoded Features
 Once variables had been label encoded, we could develop a Correlation Matrix to display the relationship between these variables.

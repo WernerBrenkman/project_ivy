@@ -32,7 +32,19 @@ From the above graphs, there are definitely features that have similar shapes. H
 
 When reading **data\_descr.txt** it is clear that some variables are highly correlated purely by definition. Let's explore those in detail and decide which to keep.
 
-Highly correlated by definition, results in the following 'grouped' variables: *Property Variables: Street, Alley, LotShape, LandContour, LandSlope, LotConfig *Dwelling/ Living Variables: BldgType, HouseStyle, MSSubClass, MSZoning, Neighborhood *Utility: Utilities, Electrical *Overall Quality & Condition: OverallQual, OverallCond, Functional *Material of House: OverallQual, RoofMatl, Exterior1st, Exterior2nd, MasVnrType, ExterQual, ExterCond, Foundation *Roof: RoofStyle, RoofMatl *Basement: BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2 *Heating: Heating, HeatingQC, CentralAir, FireplaceQu *Garage: GarageType, GarageFinish, GarageQual, GarageCond, PavedDrive *Misc: PoolQC, Fence, MiscFeature, KitchenQual \*Nature of Sale: SaleType, SaleCondition
+Highly correlated by definition, results in the following 'grouped' variables:
+
+-   Property Variables: Street, Alley, LotShape, LandContour, LandSlope, LotConfig
+-   Dwelling/ Living Variables: BldgType, HouseStyle, MSSubClass, MSZoning, Neighborhood
+-   Utility: Utilities, Electrical
+-   Overall Quality & Condition: OverallQual, OverallCond, Functional
+-   Material of House: OverallQual, RoofMatl, Exterior1st, Exterior2nd, MasVnrType, ExterQual, ExterCond, Foundation
+-   Roof: RoofStyle, RoofMatl
+-   Basement: BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2
+-   Heating: Heating, HeatingQC, CentralAir, FireplaceQu
+-   Garage: GarageType, GarageFinish, GarageQual, GarageCond, PavedDrive
+-   Misc: PoolQC, Fence, MiscFeature, KitchenQual
+-   Nature of Sale: SaleType, SaleCondition
 
 Correlation of Label Encoded Features
 -------------------------------------
@@ -147,83 +159,83 @@ Let's look at a Random Forest model that will highlight the important features t
 
 ![](exploratory_cat_data_analysis_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-7-1.png)
 
-    ##                  %IncMSE IncNodePurity
-    ## set_id         0.0000000  0.000000e+00
-    ## Id            -0.2295387  1.548827e-01
-    ## MSSubClass    24.7006491  9.238635e-01
-    ## MSZoning       9.1805534  2.176460e-01
-    ## LotArea       19.1723641  5.317503e-01
-    ## Street        -1.4103309  3.773289e-03
-    ## Alley          1.6955427  2.742265e-02
-    ## LotShape       5.4542197  4.069892e-02
-    ## LandContour    3.6935283  5.962471e-02
-    ## Utilities      0.0000000  6.075822e-04
-    ## LotConfig      0.8003341  4.204032e-02
-    ## LandSlope      3.1243847  2.528968e-02
-    ## Neighborhood  33.0162194  6.704076e+00
-    ## Condition1     2.2524630  5.785015e-02
-    ## Condition2    -0.8467243  6.225906e-03
-    ## BldgType       7.1014352  3.958928e-02
-    ## HouseStyle    10.2909754  9.626345e-02
-    ## OverallQual   26.9551421  1.048070e+01
-    ## OverallCond   16.2071488  3.262616e-01
-    ## YearBuilt     10.8530523  1.162783e+00
-    ## YearRemodAdd  12.6213490  3.499204e-01
-    ## RoofStyle      2.2238683  4.699960e-02
-    ## RoofMatl       0.1366940  1.433382e-02
-    ## Exterior1st    9.0140572  3.167001e-01
-    ## Exterior2nd   10.2153710  3.226340e-01
-    ## ExterQual     11.6889162  3.208737e+00
-    ## ExterCond      2.5335546  6.906112e-02
-    ## Foundation     5.8796696  6.053008e-02
-    ## BsmtQual       7.5697608  7.097205e-01
-    ## BsmtCond       7.7528229  7.224474e-02
-    ## BsmtExposure   8.7367669  8.061753e-02
-    ## BsmtFinType1  14.0256362  1.685725e-01
-    ## BsmtFinSF1    22.4468990  6.231602e-01
-    ## BsmtFinType2   0.6739879  2.402135e-02
-    ## BsmtFinSF2     2.0753534  2.253327e-02
-    ## BsmtUnfSF      9.7344819  2.036915e-01
-    ## TotalBsmtSF   27.2735855  1.446216e+00
-    ## Heating       -2.6772748  2.041336e-02
-    ## HeatingQC      3.4315956  7.941516e-02
-    ## CentralAir     6.7518543  3.756008e-01
-    ## x_1stFlrSF    22.7595166  1.348306e+00
-    ## x_2ndFlrSF    17.3880317  4.973422e-01
-    ## LowQualFinSF  -0.3463479  1.068361e-02
-    ## GrLivArea     38.1029519  4.940502e+00
-    ## BsmtFullBath  10.2791991  6.127619e-02
-    ## BsmtHalfBath   1.7554944  9.573142e-03
-    ## FullBath       8.5767149  3.843413e-01
-    ## HalfBath       8.5735222  4.737874e-02
-    ## BedroomAbvGr   9.2348528  1.090029e-01
-    ## KitchenAbvGr   4.1817714  1.619542e-02
-    ## KitchenQual    8.9223292  1.258524e+00
-    ## TotRmsAbvGrd  12.0293521  2.661983e-01
-    ## Functional     2.5248404  4.984730e-02
-    ## Fireplaces     9.0317967  2.700250e-01
-    ## FireplaceQu   12.4446886  5.011678e-01
-    ## GarageType    12.1129917  3.752428e-01
-    ## GarageFinish   8.1402466  2.763453e-01
-    ## GarageCars    15.9537547  1.491877e+00
-    ## GarageArea    18.6688848  1.471223e+00
-    ## GarageQual     4.8809810  8.580358e-02
-    ## GarageCond     3.8531678  9.369903e-02
-    ## PavedDrive     2.8542121  3.801349e-02
-    ## WoodDeckSF     6.3921538  1.127992e-01
-    ## OpenPorchSF    9.2465319  1.881850e-01
-    ## EnclosedPorch  1.7395513  6.111238e-02
-    ## x_3SsnPorch    1.3082772  5.134175e-03
-    ## ScreenPorch    4.3925704  2.785632e-02
-    ## PoolArea       1.0010015  2.695676e-03
-    ## PoolQC        -1.0505044  1.483834e-03
-    ## Fence          0.3172713  2.780403e-02
-    ## MiscFeature   -0.8857804  6.893715e-03
-    ## MiscVal        2.0683666  6.846851e-03
-    ## MoSold         2.1077085  1.321873e-01
-    ## YrSold         2.8091886  6.365697e-02
-    ## SaleType       1.8484367  3.785968e-02
-    ## SaleCondition -0.2345705  1.267182e-01
+    ##                   %IncMSE IncNodePurity
+    ## set_id         0.00000000   0.000000000
+    ## Id            -1.62085130   0.155755352
+    ## MSSubClass    22.42633702   0.862198480
+    ## MSZoning       9.56020857   0.213367615
+    ## LotArea       17.94875137   0.533404748
+    ## Street        -0.91596890   0.002985877
+    ## Alley          0.52099744   0.024235232
+    ## LotShape       3.14217371   0.040474375
+    ## LandContour    1.42615909   0.057464844
+    ## Utilities      0.00000000   0.000186652
+    ## LotConfig     -0.94055351   0.042544639
+    ## LandSlope      1.01286094   0.026370955
+    ## Neighborhood  33.44493915   6.537928823
+    ## Condition1     2.85345554   0.058215541
+    ## Condition2    -1.47756687   0.004324657
+    ## BldgType       5.47130376   0.032011037
+    ## HouseStyle     9.40406985   0.098673910
+    ## OverallQual   25.61062435   9.895127313
+    ## OverallCond   14.21612998   0.298513255
+    ## YearBuilt     10.58858733   1.551888182
+    ## YearRemodAdd  14.34073060   0.356941634
+    ## RoofStyle      3.31847347   0.044908642
+    ## RoofMatl      -1.34074817   0.009391449
+    ## Exterior1st   10.22772544   0.291872978
+    ## Exterior2nd   10.13389273   0.348332766
+    ## ExterQual     11.36883134   2.881221291
+    ## ExterCond      1.85521196   0.064408752
+    ## Foundation     5.30978037   0.083730410
+    ## BsmtQual       7.90337725   0.951839492
+    ## BsmtCond       6.42762944   0.068451022
+    ## BsmtExposure   8.49666210   0.087056413
+    ## BsmtFinType1  16.03694142   0.150590449
+    ## BsmtFinSF1    20.19797921   0.625668839
+    ## BsmtFinType2   1.32426553   0.028265810
+    ## BsmtFinSF2    -0.37257810   0.022565384
+    ## BsmtUnfSF      9.47623927   0.199252191
+    ## TotalBsmtSF   25.08134710   1.723555440
+    ## Heating       -0.95938666   0.022790289
+    ## HeatingQC      6.13858431   0.075509359
+    ## CentralAir     8.16771361   0.317011813
+    ## x_1stFlrSF    25.76573183   1.429096426
+    ## x_2ndFlrSF    17.43165893   0.532741673
+    ## LowQualFinSF   1.08537865   0.007815918
+    ## GrLivArea     35.82300425   5.056987507
+    ## BsmtFullBath   8.61183429   0.063737683
+    ## BsmtHalfBath   0.93617714   0.010593707
+    ## FullBath       7.42536782   0.538026276
+    ## HalfBath       9.23911652   0.041722256
+    ## BedroomAbvGr   8.17311115   0.102997696
+    ## KitchenAbvGr   4.43374542   0.016895030
+    ## KitchenQual    9.49776975   1.341765142
+    ## TotRmsAbvGrd  10.23064571   0.264061380
+    ## Functional     4.43738678   0.056517886
+    ## Fireplaces     9.21926473   0.309333646
+    ## FireplaceQu   11.20285604   0.409872639
+    ## GarageType    11.49432814   0.468158856
+    ## GarageFinish   7.66195321   0.481635395
+    ## GarageCars    12.56316783   1.336340240
+    ## GarageArea    19.04668785   1.232943792
+    ## GarageQual     4.21982708   0.079873302
+    ## GarageCond     4.38795825   0.142886814
+    ## PavedDrive     2.85413145   0.053930377
+    ## WoodDeckSF     7.76469669   0.107892701
+    ## OpenPorchSF    7.97274449   0.197077679
+    ## EnclosedPorch  1.63740175   0.061194488
+    ## x_3SsnPorch    0.58670365   0.006103717
+    ## ScreenPorch    4.52013424   0.024055512
+    ## PoolArea       1.38729072   0.004768739
+    ## PoolQC         1.36909576   0.002560823
+    ## Fence          1.84564465   0.026417091
+    ## MiscFeature    0.38377182   0.006503870
+    ## MiscVal       -0.77466297   0.007840936
+    ## MoSold        -0.06638808   0.131400757
+    ## YrSold         0.95353016   0.066657334
+    ## SaleType       1.39061282   0.038553043
+    ## SaleCondition  2.44566302   0.131550970
 
 Considering non-ordinal categorical features
 --------------------------------------------
